@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📖 참좋은성경일독학교 6조 진도표</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Supabase JS CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@400;600;700&display=swap');
+        body {
+            font-family: 'Pretendard', sans-serif;
+            background-color: #f8fafc;
+        }
+    </style>
+</head>
+<body class="min-h-screen pb-12">
+
+    <!-- 상단 헤더 -->
+    <header class="bg-emerald-700 text-white shadow-md py-6 mb-6">
+        <div class="max-w-4xl mx-auto px-4 text-center">
+            <span class="bg-emerald-800 text-emerald-200 text-xs font-bold px-3 py-1 rounded-full">참좋은성경일독학교</span>
+            <h1 class="text-3xl font-bold tracking-tight mt-2">✨ 6조 성경일독 진도표</h1>
+            <p class="text-emerald-100 text-sm mt-1">말씀으로 하나 되는 우리 조 공동체</p>
+        </div>
+    </header>
+
+    <!-- 메인 컨테이너 -->
+    <main class="max-w-4xl mx-auto px-4 space-y-6">
+        
+        <!-- 1. 사용자 로그인 영역 -->
+        <section class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
+            <h2 class="text-lg font-bold text-slate-800 mb-3">👤 조원 로그인</h2>
+            <div class="flex gap-3">
+                <input type="text" id="member-input" placeholder="이름을 입력하세요 (예: 이은혜)" 
+                       class="flex-1 px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 transition">
+                <button onclick="saveMember()" 
+                        class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-6 py-2 rounded-xl transition">
+                    입장하기
+                </button>
+            </div>
+            <p id="current-user-text" class="text-sm text-slate-500 mt-2 font-medium">로그인이 필요합니다.</p>
+        </section>
+
+        <!-- 2. 관리자 전용 제어판 (이은혜 전용 - 평소에는 숨김) -->
+        <section id="admin-section" class="bg-slate-900 text-white rounded-2xl p-6 shadow-md border border-slate-800 hidden">
+            <h2 class="text-lg font-bold text-emerald-400 mb-4 flex items-center gap-2">
+                ⚡ 6조 관리자 메뉴 (이은혜 방장 전용)
+            </h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- 멤버 관리 -->
+                <div class="space-y-3">
+                    <h3 class="text-sm font-semibold text-slate-300">👥 6조 조원 등록/삭제</h3>
+                    <div class="flex gap-2">
+                        <input type="text" id="new-member-input" placeholder="추가할 조원 이름" 
+                               class="flex-1 px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:ring-1 focus:ring-emerald-500">
+                        <button onclick="addTeamMember()" class="bg-emerald-600 hover:bg-emerald-700 text-xs font-bold px-4 py-1.5 rounded-lg transition">등록</button>
+                    </div>
+                    <div id="admin-member-list" class="max-h-40 overflow-y-auto space-y-1 bg-slate-800 p-2.5 rounded-lg text-xs">
+                        <!-- 조원 목록 동적 로딩 -->
+                    </div>
+                </div>
+                <!-- 데이터 관리 -->
+                <div class="flex flex-col justify-between space-y-4">
+                    <div>
+                        <h3 class="text-sm font-semibold text-slate-300 mb-1">⚙️ 조 데이터 관리</h3>
+                        <p class="text-xs text-slate-400 leading-relaxed">
+                            조원들의 모든 진도 기록을 백업하거나, 새 학기 시작 시 진도만 안전하게 초기화할 수 있습니다. (등록 조원 명단은 유지됩니다)
+                        </p>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="backupData()" class="flex-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-bold py-2.5 rounded-lg transition flex items-center justify-center gap-1">
+                            💾 전체 백업 (CSV)
+                        </button>
+                        <button onclick="resetAllProgress()" class="flex-1 bg-red-950 hover:bg-red-900 border border-red-800 text-red-400 text-xs font-bold py-2.5 rounded-lg transition flex items-center justify-center gap-1">
+                            ⚠️ 진도 전체 초기화
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 3. 6조 전체 실시간 진도 통계판 -->
+        <section id="family-section" class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 hidden">
+            <!-- 6조 전체 평균 게이지 -->
+            <div class="mb-6 pb-6 border-b border-slate-100">
+                <div class="flex justify-between items-center mb-2">
+                    <h2 class="text-base font-bold text-slate-800">🔥 우리 6조 전체 평균 진도율</h2>
+                    <span id="team-average-percent" class="text-emerald-600 font-extrabold text-2xl">0%</span>
+                </div>
+                <div class="w-full bg-slate-100 rounded-full h-3 overflow-hidden">
+                    <div id="team-average-bar" class="bg-gradient-to-r from-emerald-400 to-emerald-600 h-full w-0 transition-all duration-500 rounded-full"></div>
+                </div>
+            </div>
+
+            <!-- 조원별 랭킹 리스트 -->
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-md font-bold text-slate-800">📊 조원별 실시간 진도 현황</h2>
+                <button onclick="loadFamilyProgress()" class="text-xs text-emerald-600 hover:text-emerald-700 font-bold flex items-center gap-1">
+                    🔄 새로고침
+                </button>
+            </div>
+            <div id="family-list" class="space-y-2">
+                <!-- 실시간 데이터 로딩 -->
+            </div>
+        </section>
+
+        <!-- 4. 개인 독경 진도율 -->
+        <section id="progress-section" class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 hidden">
+            <div class="flex justify-between items-center mb-2">
+                <h2 class="text-base font-bold text-slate-800">🙋 나의 독경 진도율</h2>
+                <span id="progress-percent" class="text-emerald-600 font-bold text-xl">0%</span>
+            </div>
+            <div class="w-full bg-slate-100 rounded-full h-3 overflow-hidden">
+                <div id="progress-bar" class="bg-emerald-500 h-full w-0 transition-all duration-500 rounded-full"></div>
+            </div>
+            <p id="progress-count" class="text-xs text-slate-500 mt-2 text-right">0 / 1189 장 읽음</p>
+        </section>
+
+        <!-- 5. 성경 및 장 선택 영역 -->
+        <section id="bible-section" class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 hidden">
+            <!-- 구약 / 신약 탭 -->
+            <div class="flex border-b border-slate-200 mb-6">
+                <button onclick="switchTestament('OT')" id="tab-OT" class="flex-1 py-3 text-center font-bold border-b-2 border-emerald-600 text-emerald-600 transition">구약성경</button>
+                <button onclick="switchTestament('NT')" id="tab-NT" class="flex-1 py-3 text-center font-bold border-b-2 border-transparent text-slate-400 hover:text-slate-600 transition">신약성경</button>
+            </div>
+
+            <!-- 성경 책 그리드 -->
+            <div id="bible-grid" class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2 mb-8"></div>
+
+            <!-- 장 상세 리스트 -->
+            <div id="chapters-container" class="border-t border-slate-100 pt-6 hidden">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
+                    <h3 id="selected-book-title" class="text-lg font-bold text-slate-800"></h3>
+                    <div class="flex gap-2 w-full sm:w-auto">
+                        <button onclick="toggleAllChapters(true)" class="flex-1 sm:flex-initial text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold px-3 py-1.5 rounded-lg transition">전체 선택</button>
+                        <button onclick="toggleAllChapters(false)" class="flex-1 sm:flex-initial text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold px-3 py-1.5 rounded-lg transition">전체 취소</button>
+                    </div>
+                </div>
+                <div id="chapters-grid" class="grid grid-cols-5 sm:grid-cols-8 md:grid-cols-10 gap-2"></div>
+            </div>
+        </section>
+
+    </main>
+
+    <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <script>
+        // Supabase 설정 (주군의 데이터베이스 자격증명 유지)
+        const SUPABASE_URL = "https://bvgpnnhfslakhfpwecsc.supabase.co";
+        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ2Z3Bubmhmc2xha2hmcHdlY3NjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQwMzMyMjQsImV4cCI6MjA5OTYwOTIyNH0.qSaODE9r8VILSsok7cLpTGNrpomUMDQegUFoEtmS2nA";
+        
+        const { createClient } = supabase;
+        const _supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        const SYSTEM_KEY = "__SYSTEM_MEMBERS__"; // 조원 명단을 안전하게 보관할 전용 식별자
+
+        const bibleBooks = [
+            { name: "창세기", chapters: 50, testament: "OT" }, { name: "출애굽기", chapters: 40, testament: "OT" },
+            { name: "레위기", chapters: 27, testament: "OT" }, { name: "민수기", chapters: 36, testament: "OT" },
+            { name: "신명기", chapters: 34, testament: "OT" }, { name: "여호수아", chapters: 24, testament: "OT" },
+            { name: "사사기", chapters: 21, testament: "OT" }, { name: "룻기", chapters: 4, testament: "OT" },
+            { name: "사무엘상", chapters: 31, testament: "OT" }, { name: "사무엘하", chapters: 24, testament: "OT" },
+            { name: "열왕기상", chapters: 22, testament: "OT" }, { name: "열왕기하", chapters: 25, testament: "OT" },
+            { name: "역대기상", chapters: 29, testament: "OT" }, { name: "역대기하", chapters: 36, testament: "OT" },
+            { name: "에스라", chapters: 10, testament: "OT" }, { name: "느헤미야", chapters: 13, testament: "OT" },
+            { name: "에스더", chapters: 10, testament: "OT" }, { name: "욥기", chapters: 42, testament: "OT" },
+            { name: "시편", chapters: 150, testament: "OT" }, { name: "잠언", chapters: 31, testament: "OT" },
+            { name: "전도서", chapters: 12, testament: "OT" }, { name: "아가", chapters: 8, testament: "OT" },
+            { name: "이사야", chapters: 66, testament: "OT" }, { name: "예레미야", chapters: 52, testament: "OT" },
+            { name: "예레미야 애가", chapters: 5, testament: "OT" }, { name: "에스겔", chapters: 48, testament: "OT" },
+            { name: "다니엘", chapters: 12, testament: "OT" }, { name: "호세아", chapters: 14, testament: "OT" },
+            { name: "요엘", chapters: 3, testament: "OT" }, { name: "아모스", chapters: 9, testament: "OT" },
+            { name: "오바디야", chapters: 1, testament: "OT" }, { name: "요나", chapters: 4, testament: "OT" },
+            { name: "미가", chapters: 7, testament: "OT" }, { name: "나훔", chapters: 3, testament: "OT" },
+            { name: "하박국", chapters: 3, testament: "OT" }, { name: "스바냐", chapters: 3, testament: "OT" },
+            { name: "학개", chapters: 2, testament: "OT" }, { name: "스가랴", chapters: 14, testament: "OT" },
+            { name: "말라기", chapters: 4, testament: "OT" },
+
+            { name: "마태복음", chapters: 28, testament: "NT" }, { name: "마가복음", chapters: 16, testament: "NT" },
+            { name: "누가복음", chapters: 24, testament: "NT" }, { name: "요한복음", chapters: 21, testament: "NT" },
+            { name: "사도행전", chapters: 28, testament: "NT" }, { name: "로마서", chapters: 16, testament: "NT" },
+            { name: "고린도전서", chapters: 16, testament: "NT" }, { name: "고린도후서", chapters: 13, testament: "NT" },
+            { name: "갈라디아서", chapters: 6, testament: "NT" }, { name: "에베소서", chapters: 6, testament: "NT" },
+            { name: "빌립보서", chapters: 4, testament: "NT" }, { name: "골로새서", chapters: 4, testament: "NT" },
+            { name: "데살로니가전서", chapters: 5, testament: "NT" }, { name: "데살로니가후서", chapters: 3, testament: "NT" },
+            { name: "디모데전서", chapters: 6, testament: "NT" }, { name: "디모데후서", chapters: 4, testament: "NT" },
+            { name: "디도서", chapters: 3, testament: "NT" }, { name: "빌레몬서", chapters: 1, testament: "NT" },
+            { name: "히브리서", chapters: 13, testament: "NT" }, { name: "야고보서", chapters: 5, testament: "NT" },
+            { name: "베드로전서", chapters: 5, testament: "NT" }, { name: "베드로후서", chapters: 3, testament: "NT" },
+            { name: "요한일서", chapters: 5, testament: "NT" }, { name: "요한이서", chapters: 1, testament: "NT" },
+            { name: "요한삼서", chapters: 1, testament: "NT" }, { name: "유다서", chapters: 1, testament: "NT" },
+            { name: "요한계시록", chapters: 22, testament: "NT" }
+        ];
+
+        let currentMember = "";
+        let currentTestament = "OT";
+        let selectedBook = null;
+        let readLogs = new Set(); 
+
+        window.onload = function() {
+            const savedMember = localStorage.getItem("bible_member");
+            if (savedMember) {
+                document.getElementById("member-input").value = savedMember;
+                currentMember = savedMember;
+                loadUserData();
+            }
+        };
+
+        // 데이터베이스에서 등록된 조원 목록 불러오기
+        async function getRegisteredMembers() {
+            try {
+                const { data, error } = await _supabase
+                    .from('reading_logs')
+                    .select('book')
+                    .eq('member', SYSTEM_KEY);
+                
+                if (error) throw error;
+                const list = data.map(d => d.book.trim());
+                
+                // 이은혜 방장은 고정 등록
+                if (!list.includes("이은혜")) {
+                    list.unshift("이은혜");
+                }
+                return list;
+            } catch (err) {
+                console.error("멤버 로딩 에러:", err);
+                return ["이은혜"];
+            }
+        }
+
+        // 조원 로그인 제어
+        async function saveMember() {
+            const nameInput = document.getElementById("member-input").value.trim();
+            if (!nameInput) {
+                showToast("이름을 입력해주세요!", "error");
+                return;
+            }
+
+            const allowed = await getRegisteredMembers();
+            if (!allowed.includes(nameInput)) {
+                showToast("등록되지 않은 조원입니다. 방장(이은혜)님에게 문의하세요.", "error");
+                return;
+            }
+
+            currentMember = nameInput;
+            localStorage.setItem("bible_member", currentMember);
+            showToast(`${currentMember}님 환영합니다! 조원 연동 성공. 👋`, "success");
+            loadUserData();
+        }
+
+        // 로그인 성공 시 UI 갱신
+        async function loadUserData() {
+            document.getElementById("current-user-text").textContent = `현재 접속 중: ${currentMember}`;
+            document.getElementById("progress-section").classList.remove("hidden");
+            document.getElementById("bible-section").classList.remove("hidden");
+            document.getElementById("family-section").classList.remove("hidden");
+
+            // 방장(이은혜) 검증 및 관리자 패널 제어
+            const adminSection = document.getElementById("admin-section");
+            if (currentMember === "이은혜") {
+                adminSection.classList.remove("hidden");
+                renderAdminMembers();
+            } else {
+                adminSection.classList.add("hidden");
+            }
+
+            try {
+                const { data, error } = await _supabase
+                    .from('reading_logs')
+                    .select('book, chapter')
+                    .eq('member', currentMember);
+
+                if (error) throw error;
+
+                readLogs.clear();
+                data.forEach(log => {
+                    readLogs.add(`${log.book}-${log.chapter}`);
+                });
+
+                renderBibleGrid();
+                updateProgressBar();
+                loadFamilyProgress();
+
+                if (selectedBook) {
+                    renderChaptersGrid();
+                }
+            } catch (err) {
+                console.error(err);
+                showToast("데이터를 동기화하지 못했습니다.", "error");
+            }
+        }
+
+        // 6조 전체 실시간 진도율 및 랭킹 산출
+        async function loadFamilyProgress() {
+            try {
+                const registeredMembers = await getRegisteredMembers();
+                const { data, error } = await _supabase
+                    .from('reading_logs')
+                    .select('member')
+                    .neq('member', SYSTEM_KEY);
+
+                if (error) throw error;
+
+                const counts = {};
+                registeredMembers.forEach(m => counts[m] = 0); // 기본값 0 세팅
+
+                let totalReadChapters = 0;
+                data.forEach(log => {
+                    const name = log.member.trim();
+                    if (registeredMembers.includes(name)) {
+                        counts[name] = (counts[name] || 0) + 1;
+                        totalReadChapters++;
+                    }
+                });
+
+                // 6조 전체 평균 계산
+                const totalMembers = registeredMembers.length;
+                const maxPossible = totalMembers * 1189;
+                const teamAverage = maxPossible > 0 ? ((totalReadChapters / maxPossible) * 100).toFixed(1) : "0.0";
+
+                document.getElementById("team-average-percent").textContent = `${teamAverage}%`;
+                document.getElementById("team-average-bar").style.width = `${teamAverage}%`;
+
+                // 리스트 갱신 (많이 읽은 순 정렬)
+                const sorted = registeredMembers.map(name => {
+                    return { name, count: counts[name] || 0 };
+                }).sort((a, b) => b.count - a.count);
+
+                const listEl = document.getElementById("family-list");
+                listEl.innerHTML = "";
+
+                sorted.forEach((member, index) => {
+                    const totalChapters = 1189;
+                    const percent = ((member.count / totalChapters) * 100).toFixed(1);
+                    const isMe = member.name === currentMember;
+                    
+                    let medal = `<span class="text-sm font-bold text-slate-400 w-6">${index + 1}</span>`;
+                    if (index === 0 && member.count > 0) medal = `<span class="text-lg w-6">🥇</span>`;
+                    if (index === 1 && member.count > 0) medal = `<span class="text-lg w-6">🥈</span>`;
+                    if (index === 2 && member.count > 0) medal = `<span class="text-lg w-6">🥉</span>`;
+
+                    const item = document.createElement("div");
+                    item.className = `flex items-center justify-between p-3 rounded-xl transition-all ${
+                        isMe ? 'bg-emerald-50 border border-emerald-200' : 'bg-slate-50 border border-transparent'
+                    }`;
+                    item.innerHTML = `
+                        <div class="flex items-center gap-2">
+                            ${medal}
+                            <span class="font-bold text-sm ${isMe ? 'text-emerald-700' : 'text-slate-700'}">
+                                ${member.name} ${isMe ? '<span class="text-[10px] bg-emerald-200 text-emerald-800 px-1 py-0.5 rounded ml-1">나</span>' : ''}
+                            </span>
+                        </div>
+                        <div class="flex items-center gap-4">
+                            <div class="w-24 bg-slate-200 rounded-full h-1.5 overflow-hidden hidden sm:block">
+                                <div class="bg-emerald-500 h-full" style="width: ${percent}%"></div>
+                            </div>
+                            <span class="text-sm font-bold text-slate-700">${percent}%</span>
+                            <span class="text-xs text-slate-400 font-semibold">${member.count}장</span>
+                        </div>
+                    `;
+                    listEl.appendChild(item);
+                });
+
+            } catch (err) {
+                console.error("팀 진도 산출 에러:", err);
+            }
+        }
+
+        /* ================= [관리자 전용 기능] ================= */
+
+        // 1. 관리자 화면: 조원 목록 출력
+        async function renderAdminMembers() {
+            const listEl = document.getElementById("admin-member-list");
+            if (!listEl) return;
+            listEl.innerHTML = "<p class='text-slate-500 text-center py-2'>조원 목록을 호출 중입니다...</p>";
+
+            const members = await getRegisteredMembers();
+            listEl.innerHTML = "";
+
+            members.forEach(name => {
+                const div = document.createElement("div");
+                div.className = "flex justify-between items-center py-1.5 border-b border-slate-800 last:border-0";
+                div.innerHTML = `
+                    <span class="${name === '이은혜' ? 'text-emerald-400 font-bold' : 'text-slate-300'}">${name} ${name === '이은혜' ? '(방장)' : ''}</span>
+                    ${name !== '이은혜' ? `<button onclick="deleteTeamMember('${name}')" class="text-red-400 hover:text-red-500 font-bold px-2">✕</button>` : ''}
+                `;
+                listEl.appendChild(div);
+            });
+        }
+
+        // 2. 조원 신규 추가
+        async function addTeamMember() {
+            const newName = document.getElementById("new-member-input").value.trim();
+            if (!newName) {
+                showToast("등록할 이름을 입력하세요.", "error");
+                return;
+            }
+            if (newName === "SYSTEM_KEY") return;
+
+            const current = await getRegisteredMembers();
+            if (current.includes(newName)) {
+                showToast("이미 등록된 조원입니다.", "error");
+                return;
+            }
+
+            try {
+                const { error } = await _supabase
+                    .from('reading_logs')
+                    .insert([{ member: SYSTEM_KEY, book: newName, chapter: 0 }]);
+
+                if (error) throw error;
+
+                showToast(`${newName} 조원이 등록되었습니다.`, "success");
+                document.getElementById("new-member-input").value = "";
+                await renderAdminMembers();
+                await loadFamilyProgress();
+            } catch (err) {
+                console.error(err);
+                showToast("조원 등록에 실패했습니다.", "error");
+            }
+        }
+
+        // 3. 조원 방출 (삭제)
+        async function deleteTeamMember(name) {
+            if (name === "이은혜") return;
+            if (!confirm(`⚠️ 정말로 [${name}] 조원을 삭제하시겠습니까?\n해당 조원의 모든 진도 기록도 함께 소멸됩니다.`)) return;
+
+            try {
+                // 시스템 식별자 행 제거
+                await _supabase.from('reading_logs').delete().eq('member', SYSTEM_KEY).eq('book', name);
+                // 실시간 독경 로그 제거
+                await _supabase.from('reading_logs').delete().eq('member', name);
+
+                showToast(`${name} 조원을 삭제 처리했습니다.`, "info");
+                await renderAdminMembers();
+                await loadFamilyProgress();
+            } catch (err) {
+                console.error(err);
+                showToast("삭제 도중 오류가 발생했습니다.", "error");
+            }
+        }
+
+        // 4. 데이터 전체 백업 (CSV 추출)
+        async function backupData() {
+            try {
+                const { data, error } = await _supabase
+                    .from('reading_logs')
+                    .select('member, book, chapter, created_at')
+                    .neq('member', SYSTEM_KEY);
+                
+                if (error) throw error;
+
+                if (data.length === 0) {
+                    showToast("백업할 읽기 데이터가 존재하지 않습니다.", "info");
+                    return;
+                }
+
+                // 한글 Excel 깨짐 현상 방지용 UTF-8 BOM 탑재
+                let csvContent = "\uFEFF"; 
+                csvContent += "조원이름,성경책,읽은 장수,체크일시\n";
+                
+                data.forEach(row => {
+                    const dateStr = row.created_at ? new Date(row.created_at).toLocaleString('ko-KR') : '-';
+                    csvContent += `"${row.member}","${row.book}",${row.chapter},"${dateStr}"\n`;
+                });
+
+                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement("a");
+                link.setAttribute("href", url);
+                link.setAttribute("download", `참좋은성경일독학교_6조_백업_${new Date().toISOString().slice(0, 10)}.csv`);
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                showToast("진도 백업 파일이 다운로드되었습니다.", "success");
+            } catch (err) {
+                console.error(err);
+                showToast("백업 파일 생성에 실패했습니다.", "error");
+            }
+        }
+
+        // 5. 전체 진도 기록 초기화 (독경 기록만 비움)
+        async function resetAllProgress() {
+            if (!confirm("🚨 경고: 정말로 모든 조원의 성경 읽기 진도 기록을 강제 초기화하시겠습니까?\n(등록된 조원 명단은 안전하게 유지됩니다)")) return;
+            if (!confirm("⚠️ 되돌릴 수 없는 파멸적 작업입니다. 정말 진행합니까?")) return;
+
+            try {
+                const { error } = await _supabase
+                    .from('reading_logs')
+                    .delete()
+                    .neq('member', SYSTEM_KEY);
+
+                if (error) throw error;
+
+                showToast("6조 전체 진도 기록이 완전히 초기화되었습니다.", "success");
+                await loadUserData();
+            } catch (err) {
+                console.error(err);
+                showToast("초기화 작업 중 문제가 발생했습니다.", "error");
+            }
+        }
+
+        /* ================= [일반 사용자 기능] ================= */
+
+        // 성경 탭 전환
+        function switchTestament(testament) {
+            currentTestament = testament;
+            document.getElementById("tab-OT").className = testament === 'OT' 
+                ? "flex-1 py-3 text-center font-bold border-b-2 border-emerald-600 text-emerald-600 transition"
+                : "flex-1 py-3 text-center font-bold border-b-2 border-transparent text-slate-400 hover:text-slate-600 transition";
+            document.getElementById("tab-NT").className = testament === 'NT' 
+                ? "flex-1 py-3 text-center font-bold border-b-2 border-emerald-600 text-emerald-600 transition"
+                : "flex-1 py-3 text-center font-bold border-b-2 border-transparent text-slate-400 hover:text-slate-600 transition";
+
+            renderBibleGrid();
+        }
+
+        // 성경 그리드 그리기
+        function renderBibleGrid() {
+            const grid = document.getElementById("bible-grid");
+            grid.innerHTML = "";
+
+            const filtered = bibleBooks.filter(b => b.testament === currentTestament);
+            filtered.forEach(book => {
+                const readCount = Array.from(readLogs).filter(key => key.startsWith(`${book.name}-`)).length;
+                const isCompleted = readCount === book.chapters;
+
+                const btn = document.createElement("button");
+                btn.className = `flex flex-col items-center justify-center p-3 rounded-xl border text-xs sm:text-sm transition-all duration-200 ${
+                    selectedBook && selectedBook.name === book.name
+                        ? "border-emerald-600 bg-emerald-50 text-emerald-800 font-bold scale-105"
+                        : isCompleted
+                        ? "border-emerald-200 bg-emerald-50/50 text-emerald-700 font-medium"
+                        : "border-slate-200 bg-white hover:bg-slate-50 text-slate-700"
+                }`;
+                btn.onclick = () => selectBook(book);
+                btn.innerHTML = `
+                    <span class="truncate w-full text-center">${book.name}</span>
+                    <span class="text-[10px] mt-1 text-slate-400 font-normal">${readCount}/${book.chapters} 장</span>
+                `;
+                grid.appendChild(btn);
+            });
+        }
+
+        // 특정 성경책 선택
+        function selectBook(book) {
+            selectedBook = book;
+            document.getElementById("chapters-container").classList.remove("hidden");
+            document.getElementById("selected-book-title").textContent = `📖 ${book.name} (총 ${book.chapters}장)`;
+            renderBibleGrid();
+            renderChaptersGrid();
+        }
+
+        // 성경 장 그리드 렌더링
+        function renderChaptersGrid() {
+            const grid = document.getElementById("chapters-grid");
+            grid.innerHTML = "";
+
+            for (let i = 1; i <= selectedBook.chapters; i++) {
+                const key = `${selectedBook.name}-${i}`;
+                const isRead = readLogs.has(key);
+
+                const btn = document.createElement("button");
+                btn.className = `py-3 rounded-xl border text-xs sm:text-sm font-semibold transition-all duration-150 ${
+                    isRead 
+                        ? "bg-emerald-500 text-white border-emerald-500 hover:bg-emerald-600" 
+                        : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+                }`;
+                btn.textContent = `${i}장`;
+                btn.onclick = () => toggleChapter(i);
+                grid.appendChild(btn);
+            }
+        }
+
+        // 단일 장 읽음 체크/해제
+        async function toggleChapter(chapterNum) {
+            const key = `${selectedBook.name}-${chapterNum}`;
+            const isRead = readLogs.has(key);
+
+            try {
+                if (!isRead) {
+                    const { error } = await _supabase
+                        .from('reading_logs')
+                        .insert([{ member: currentMember, book: selectedBook.name, chapter: chapterNum }]);
+                    if (error) throw error;
+                    
+                    readLogs.add(key);
+                } else {
+                    const { error } = await _supabase
+                        .from('reading_logs')
+                        .delete()
+                        .eq('member', currentMember)
+                        .eq('book', selectedBook.name)
+                        .eq('chapter', chapterNum);
+                    if (error) throw error;
+
+                    readLogs.delete(key);
+                }
+
+                renderChaptersGrid();
+                renderBibleGrid();
+                updateProgressBar();
+                loadFamilyProgress();
+            } catch (err) {
+                console.error(err);
+                showToast("서버와 통신하는 중 문제가 발생했습니다.", "error");
+            }
+        }
+
+        // 전체 장 일괄 선택/취소
+        async function toggleAllChapters(shouldSelectAll) {
+            if (!selectedBook) return;
+
+            try {
+                if (shouldSelectAll) {
+                    const toInsert = [];
+                    for (let i = 1; i <= selectedBook.chapters; i++) {
+                        const key = `${selectedBook.name}-${i}`;
+                        if (!readLogs.has(key)) {
+                            toInsert.push({ member: currentMember, book: selectedBook.name, chapter: i });
+                        }
+                    }
+
+                    if (toInsert.length > 0) {
+                        const { error } = await _supabase.from('reading_logs').insert(toInsert);
+                        if (error) throw error;
+                        toInsert.forEach(item => readLogs.add(`${item.book}-${item.chapter}`));
+                    }
+                    showToast(`${selectedBook.name} 전체 완료!`, "success");
+                } else {
+                    const { error } = await _supabase
+                        .from('reading_logs')
+                        .delete()
+                        .eq('member', currentMember)
+                        .eq('book', selectedBook.name);
+                    if (error) throw error;
+
+                    for (let i = 1; i <= selectedBook.chapters; i++) {
+                        readLogs.delete(`${selectedBook.name}-${i}`);
+                    }
+                    showToast(`${selectedBook.name} 전체 선택 취소`, "info");
+                }
+
+                renderChaptersGrid();
+                renderBibleGrid();
+                updateProgressBar();
+                loadFamilyProgress();
+            } catch (err) {
+                console.error(err);
+                showToast("일괄 처리에 실패했습니다.", "error");
+            }
+        }
+
+        // 내 개인 진도 업데이트
+        function updateProgressBar() {
+            const totalChapters = 1189;
+            const myCount = readLogs.size;
+            const percent = ((myCount / totalChapters) * 100).toFixed(1);
+
+            document.getElementById("progress-percent").textContent = `${percent}%`;
+            document.getElementById("progress-bar").style.width = `${percent}%`;
+            document.getElementById("progress-count").textContent = `${myCount} / ${totalChapters} 장 일독 완료`;
+        }
+
+        // 토스트 알림창
+        function showToast(message, type = "success") {
+            const container = document.getElementById("toast-container");
+            const toast = document.createElement("div");
+            
+            const bgClass = type === "success" 
+                ? "bg-slate-800 text-white" 
+                : type === "error" 
+                ? "bg-red-600 text-white" 
+                : "bg-slate-600 text-white";
+
+            toast.className = `px-5 py-3 rounded-xl shadow-lg text-xs font-semibold transform translate-y-4 opacity-0 transition-all duration-300 pointer-events-auto ${bgClass}`;
+            toast.textContent = message;
+
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.classList.remove("translate-y-4", "opacity-0");
+            }, 10);
+
+            setTimeout(() => {
+                toast.classList.add("translate-y-4", "opacity-0");
+                setTimeout(() => {
+                    toast.remove();
+                }, 300);
+            }, 2500);
+        }
+    </script>
+</body>
+</html>
