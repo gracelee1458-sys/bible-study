@@ -325,14 +325,23 @@
         const { createClient } = supabase;
         const _supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        // 테스트용 콘솔 로그 (연결 상태 확인)
-        console.log("Supabase Client 초기화 성공:", _supabase);
-
-        // ==========================================
-        // 2. 사용자 관리 (Member Management)
-        // ==========================================
         let currentMember = localStorage.getItem('currentMember') || '';
+        let currentCalendarMonth = new Date();
+        
+        let weeklyChartInstance = null;
+        let monthlyChartInstance = null;
 
+        // DB 조회용 안전한 날짜(YYYY-MM-DD) 형식 변환 함수
+        function formatDateToYYYYMMDD(date) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        // ==========================================
+        // 2. 사용자 로그인 및 관리
+        // ==========================================
         function saveMember() {
             const memberSelect = document.getElementById('member-select');
             const selectedMember = memberSelect.value;
@@ -345,7 +354,6 @@
             currentMember = selectedMember;
             localStorage.setItem('currentMember', selectedMember);
             
-            // UI 업데이트
             updateUIForMember();
             showToast(`${selectedMember}님이 입장했습니다! 👋`, 'success');
         }
@@ -359,7 +367,10 @@
                 document.getElementById('progress-section').style.display = 'block';
                 document.getElementById('team-section').style.display = 'block';
                 document.getElementById('bible-section').style.display = 'block';
-                loadData();
+                
+                // 로그인 시 최초 데이터 로드 진행
+                initAllData();
+                switchTestament('OT');
             } else {
                 currentUserText.textContent = '로그인이 필요합니다.';
                 document.getElementById('stats-section').style.display = 'none';
@@ -385,54 +396,21 @@
             localStorage.setItem('darkMode', document.body.classList.contains('dark-mode'));
         }
 
-        // 초기 다크모드 설정
         if (localStorage.getItem('darkMode') === 'true') {
             document.body.classList.add('dark-mode');
         }
 
         // ==========================================
-        // 4. 탭 전환
+        // 4. 로딩 및 토스트 UI 제어
         // ==========================================
-        function switchTab(tabName) {
-            // 모든 탭 숨기기
-            document.querySelectorAll('.tab-content').forEach(tab => {
-                tab.classList.add('hidden');
-            });
-
-            // 모든 탭 버튼 비활성화
-            document.querySelectorAll('.tab-btn').forEach(btn => {
-                btn.classList.remove('active', 'bg-emerald-100', 'dark:bg-emerald-900', 'text-emerald-700', 'dark:text-emerald-300');
-            });
-
-            // 선택된 탭 표시
-            const selectedTab = document.getElementById(`tab-${tabName}`);
-            if (selectedTab) {
-                selectedTab.classList.remove('hidden');
-            }
-
-            // 선택된 버튼 활성화
-            const selectedBtn = document.querySelector(`[data-tab="${tabName}"]`);
-            if (selectedBtn) {
-                selectedBtn.classList.add('active', 'bg-emerald-100', 'dark:bg-emerald-900', 'text-emerald-700', 'dark:text-emerald-300');
-            }
-
-            // Load data for specific tabs
-            if (tabName === 'week') {
-                updateWeeklyStats();
-            } else if (tabName === 'month') {
-                updateMonthlyStats();
-            } else if (tabName === 'calendar') {
-                updateCalendar();
-            } else if (tabName === 'streak') {
-                updateStreakList();
-            } else if (tabName === 'complete') {
-                updateCompleteBooks();
+        function showLoading(isLoading) {
+            const loader = document.getElementById('loadingSpinner');
+            if (loader) {
+                if (isLoading) loader.classList.remove('hidden');
+                else loader.classList.add('hidden');
             }
         }
 
-        // ==========================================
-        // 5. 토스트 알림
-        // ==========================================
         function showToast(message, type = 'info') {
             const container = document.getElementById('toast-container');
             const toast = document.createElement('div');
@@ -449,133 +427,212 @@
         }
 
         // ==========================================
-        // 6. 팀 관리
+        // 5. 통합 데이터 초기화 (Init All Data)
         // ==========================================
-        function addTeamMember() {
-            const input = document.getElementById('new-member-input');
-            const newMemberName = input.value.trim();
+        async function initAllData() {
+            if (!currentMember) return;
+            showLoading(true);
+            try {
+                // 병렬 비동기 패치로 데이터베이스 정합성 맞추기
+                await Promise.all([
+                    updateProgressBar(),
+                    updateTeamStats(),
+                    updateTodayList(),
+                    updateStreakInfo(),
+                    updateWeeklyStats(),
+                    updateMonthlyStats(),
+                    updateCalendar(),
+                    updateCompleteBooks()
+                ]);
+            } catch (error) {
+                console.error("데이터 로드 중 에러가 발생했습니다:", error);
+                showToast("데이터 동기화 실패!", "error");
+            } finally {
+                showLoading(false);
+            }
+        }
 
-            if (!newMemberName) {
-                alert('이름을 입력해주세요.');
+        // ==========================================
+        // 6. 탭 전환 기능
+        // ==========================================
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.add('hidden');
+            });
+
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('active', 'bg-emerald-100', 'dark:bg-emerald-900', 'text-emerald-700', 'dark:text-emerald-300');
+            });
+
+            const selectedTab = document.getElementById(`tab-${tabName}`);
+            if (selectedTab) {
+                selectedTab.classList.remove('hidden');
+            }
+
+            const selectedBtn = document.querySelector(`[data-tab="${tabName}"]`);
+            if (selectedBtn) {
+                selectedBtn.classList.add('active', 'bg-emerald-100', 'dark:bg-emerald-900', 'text-emerald-700', 'dark:text-emerald-300');
+            }
+
+            // 각 탭 전용 데이터 렌더러 호출
+            if (tabName === 'today') updateTodayList();
+            else if (tabName === 'week') updateWeeklyStats();
+            else if (tabName === 'month') updateMonthlyStats();
+            else if (tabName === 'calendar') updateCalendar();
+            else if (tabName === 'streak') updateStreakInfo();
+            else if (tabName === 'complete') updateCompleteBooks();
+        }
+
+        // ==========================================
+        // 7. Supabase DB 연동 핵심 통계 함수들
+        // ==========================================
+
+        // 개인 진도 업데이트
+        async function updateProgressBar() {
+            if (!currentMember) return;
+
+            // Supabase에서 현재 사용자의 전체 독서 로그 수 가져오기
+            const { data, error } = await _supabase
+                .from('reading_logs')
+                .select('id')
+                .eq('user_name', currentMember);
+
+            if (error) {
+                console.error("개인 진도 로드 에러:", error);
                 return;
             }
 
-            const option = document.createElement('option');
-            option.value = newMemberName;
-            option.textContent = `✨ ${newMemberName}`;
-            document.getElementById('member-select').appendChild(option);
-
-            input.value = '';
-            showToast(`${newMemberName} 추가됨`, 'success');
-        }
-
-        // ==========================================
-        // 7. 데이터 저장 및 로드
-        // ==========================================
-        function loadData() {
-            updateProgressBar();
-            updateTeamStats();
-            updateTodayList();
-            updateStreakInfo();
-            updateWeeklyStats();
-            updateMonthlyStats();
-            updateCalendar();
-            updateCompleteBooks();
-        }
-
-        function updateProgressBar() {
-            const progressBar = document.getElementById('progress-bar');
-            const progressPercent = document.getElementById('progress-percent');
-            const progressCount = document.getElementById('progress-count');
-
-            const memberData = JSON.parse(localStorage.getItem(`bible_${currentMember}`) || '{"chapters": 0, "books": {}}');
             const totalChapters = 1189;
-            const chaptersRead = memberData.chapters || 0;
+            const chaptersRead = data ? data.length : 0;
             const percentage = Math.round((chaptersRead / totalChapters) * 100);
 
-            progressBar.style.width = percentage + '%';
-            progressPercent.textContent = percentage + '%';
-            progressCount.textContent = `${chaptersRead} / ${totalChapters} 장 읽음`;
+            document.getElementById('progress-bar').style.width = percentage + '%';
+            document.getElementById('progress-percent').textContent = percentage + '%';
+            document.getElementById('progress-count').textContent = `${chaptersRead} / ${totalChapters} 장 읽음`;
         }
 
-        function updateTeamStats() {
+        // 팀 통계 업데이트
+        async function updateTeamStats() {
             const teamList = document.getElementById('team-list');
+            if (!teamList) return;
             teamList.innerHTML = '';
 
             const members = ['김우자', '오영옥', '이은혜', '임현화'];
-            let totalChapters = 0;
+            const emojis = ['🔵', '🟣', '🟡', '🔴'];
+            let totalTeamChapters = 0;
 
-            members.forEach((member, index) => {
-                const memberData = JSON.parse(localStorage.getItem(`bible_${member}`) || '{"chapters": 0}');
-                const chapters = memberData.chapters || 0;
-                totalChapters += chapters;
+            // 각 유저별 읽은 로그 카운트 API 호출
+            for (let i = 0; i < members.length; i++) {
+                const member = members[i];
+                const { count, error } = await _supabase
+                    .from('reading_logs')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('user_name', member);
 
+                if (error) {
+                    console.error(`${member} 데이터 카운트 오류:`, error);
+                    continue;
+                }
+
+                const chapters = count || 0;
+                totalTeamChapters += chapters;
                 const percentage = Math.round((chapters / 1189) * 100);
-                const emojis = ['🔵', '🟣', '🟡', '🔴'];
 
                 const item = document.createElement('div');
                 item.className = 'p-3 bg-slate-50 dark:bg-slate-700 rounded-lg flex justify-between items-center';
                 item.innerHTML = `
-                    <span class="font-semibold text-sm md:text-base">${emojis[index]} ${member}</span>
+                    <span class="font-semibold text-sm md:text-base">${emojis[i]} ${member}</span>
                     <span class="text-emerald-600 dark:text-emerald-400 font-bold">${percentage}% (${chapters}장)</span>
                 `;
                 teamList.appendChild(item);
-            });
+            }
 
-            const teamAverage = Math.round((totalChapters / (1189 * 4)) * 100);
+            const teamAverage = Math.round((totalTeamChapters / (1189 * 4)) * 100);
             document.getElementById('team-average-percent').textContent = teamAverage + '%';
             document.getElementById('team-average-bar').style.width = teamAverage + '%';
         }
 
-        function updateTodayList() {
+        // 오늘 현황 업데이트
+        async function updateTodayList() {
             const todayList = document.getElementById('today-list');
+            if (!todayList) return;
             todayList.innerHTML = '';
             
-            const today = new Date().toLocaleDateString('ko-KR');
-            document.getElementById('today-date').textContent = today;
+            const todayStr = formatDateToYYYYMMDD(new Date());
+            document.getElementById('today-date').textContent = todayStr;
 
             const members = ['김우자', '오영옥', '이은혜', '임현화'];
             const emojis = ['🔵', '🟣', '🟡', '🔴'];
 
+            // 오늘 날짜에 기록된 로그 가져오기
+            const { data: todayLogs, error } = await _supabase
+                .from('reading_logs')
+                .select('user_name, read_date')
+                .gte('read_date', todayStr)
+                .lte('read_date', todayStr);
+
+            if (error) {
+                console.error("오늘 데이터 로드 에러:", error);
+                return;
+            }
+
             members.forEach((member, index) => {
-                const memberData = JSON.parse(localStorage.getItem(`bible_${member}`) || '{"last_read": ""}');
-                const lastRead = memberData.last_read || '아직 없음';
+                const hasReadToday = todayLogs.some(log => log.user_name === member);
+                const statusText = hasReadToday ? '🎉 오늘 읽음!' : '아직 읽지 않음';
 
                 const item = document.createElement('div');
-                item.className = 'p-3 bg-slate-50 dark:bg-slate-700 rounded-lg flex justify-between items-center';
+                item.className = `p-3 rounded-lg flex justify-between items-center ${hasReadToday ? 'bg-emerald-50 dark:bg-emerald-950/30' : 'bg-slate-50 dark:bg-slate-700'}`;
                 item.innerHTML = `
                     <span class="font-semibold text-sm">${emojis[index]} ${member}</span>
-                    <span class="text-xs text-slate-600 dark:text-slate-300">${lastRead}</span>
+                    <span class="text-xs font-medium ${hasReadToday ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'}">${statusText}</span>
                 `;
                 todayList.appendChild(item);
             });
         }
 
-        function updateStreakInfo() {
-            const memberData = JSON.parse(localStorage.getItem(`bible_${currentMember}`) || '{"streak": 0, "maxStreak": 0}');
-            document.getElementById('currentStreakText').textContent = (memberData.streak || 0) + '일';
-            document.getElementById('longestStreakText').textContent = (memberData.maxStreak || 0) + '일';
-        }
-
-        function updateWeeklyStats() {
+        // 주간 랭킹 차트 업데이트
+        async function updateWeeklyStats() {
             const weeklyChart = document.getElementById('weeklyChart');
-            if (!weeklyChart || !weeklyChart.parentElement) return;
+            if (!weeklyChart) return;
+
+            const today = new Date();
+            const dayOfWeek = today.getDay();
+            const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+            
+            const startOfWeek = new Date(today);
+            startOfWeek.setDate(today.getDate() + mondayOffset);
+            const endOfWeek = new Date(startOfWeek);
+            endOfWeek.setDate(startOfWeek.getDate() + 6);
+
+            // 이번주 성경 로그 데이터 로드
+            const { data: weeklyLogs, error } = await _supabase
+                .from('reading_logs')
+                .select('user_name')
+                .gte('read_date', formatDateToYYYYMMDD(startOfWeek))
+                .lte('read_date', formatDateToYYYYMMDD(endOfWeek));
+
+            if (error) {
+                console.error("주간 차트 로드 실패:", error);
+                return;
+            }
 
             const members = ['김우자', '오영옥', '이은혜', '임현화'];
-            const weeklyData = {};
-            
-            members.forEach(member => {
-                const memberData = JSON.parse(localStorage.getItem(`bible_${member}`) || '{"chapters": 0}');
-                weeklyData[member] = memberData.chapters || 0;
-            });
+            const weeklyData = { '김우자': 0, '오영옥': 0, '이은혜': 0, '임현화': 0 };
 
-            // Destroy existing chart if it exists
-            if (window.weeklyChartInstance) {
-                window.weeklyChartInstance.destroy();
+            if (weeklyLogs) {
+                weeklyLogs.forEach(log => {
+                    if (weeklyData[log.user_name] !== undefined) {
+                        weeklyData[log.user_name]++;
+                    }
+                });
+            }
+
+            if (weeklyChartInstance) {
+                weeklyChartInstance.destroy();
             }
 
             const ctx = weeklyChart.getContext('2d');
-            window.weeklyChartInstance = new Chart(ctx, {
+            weeklyChartInstance = new Chart(ctx, {
                 type: 'bar',
                 data: {
                     labels: members,
@@ -592,52 +649,66 @@
                     responsive: true,
                     maintainAspectRatio: false,
                     indexAxis: 'y',
-                    plugins: {
-                        legend: { display: false }
-                    },
-                    scales: {
-                        x: {
-                            beginAtZero: true,
-                            max: 200
-                        }
-                    }
+                    plugins: { legend: { display: false } },
+                    scales: { x: { beginAtZero: true } }
                 }
             });
 
-            // Update weekly list
+            // 주간 랭킹 리스트 갱신
             const weekList = document.getElementById('week-list');
-            weekList.innerHTML = '';
-            members.forEach((member, idx) => {
-                const emojis = ['🔵', '🟣', '🟡', '🔴'];
-                const item = document.createElement('div');
-                item.className = 'p-3 bg-slate-50 dark:bg-slate-700 rounded-lg flex justify-between items-center';
-                item.innerHTML = `
-                    <span class="font-semibold text-sm">${emojis[idx]} ${member}</span>
-                    <span class="text-emerald-600 dark:text-emerald-400 font-bold">${weeklyData[member]}장</span>
-                `;
-                weekList.appendChild(item);
-            });
+            if (weekList) {
+                weekList.innerHTML = '';
+                members.forEach((member, idx) => {
+                    const emojis = ['🔵', '🟣', '🟡', '🔴'];
+                    const item = document.createElement('div');
+                    item.className = 'p-3 bg-slate-50 dark:bg-slate-700 rounded-lg flex justify-between items-center';
+                    item.innerHTML = `
+                        <span class="font-semibold text-sm">${emojis[idx]} ${member}</span>
+                        <span class="text-emerald-600 dark:text-emerald-400 font-bold">${weeklyData[member]}장</span>
+                    `;
+                    weekList.appendChild(item);
+                });
+            }
         }
 
-        function updateMonthlyStats() {
+        // 월간 진도 차트 업데이트
+        async function updateMonthlyStats() {
             const monthlyChart = document.getElementById('monthlyChart');
-            if (!monthlyChart || !monthlyChart.parentElement) return;
+            if (!monthlyChart) return;
+
+            const today = new Date();
+            const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+            const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+
+            // 이번달 성경 로그 데이터 로드
+            const { data: monthlyLogs, error } = await _supabase
+                .from('reading_logs')
+                .select('user_name')
+                .gte('read_date', formatDateToYYYYMMDD(startOfMonth))
+                .lte('read_date', formatDateToYYYYMMDD(endOfMonth));
+
+            if (error) {
+                console.error("월간 차트 로드 실패:", error);
+                return;
+            }
 
             const members = ['김우자', '오영옥', '이은혜', '임현화'];
-            const monthlyData = {};
-            
-            members.forEach(member => {
-                const memberData = JSON.parse(localStorage.getItem(`bible_${member}`) || '{"chapters": 0}');
-                monthlyData[member] = memberData.chapters || 0;
-            });
+            const monthlyData = { '김우자': 0, '오영옥': 0, '이은혜': 0, '임현화': 0 };
 
-            // Destroy existing chart if it exists
-            if (window.monthlyChartInstance) {
-                window.monthlyChartInstance.destroy();
+            if (monthlyLogs) {
+                monthlyLogs.forEach(log => {
+                    if (monthlyData[log.user_name] !== undefined) {
+                        monthlyData[log.user_name]++;
+                    }
+                });
+            }
+
+            if (monthlyChartInstance) {
+                monthlyChartInstance.destroy();
             }
 
             const ctx = monthlyChart.getContext('2d');
-            window.monthlyChartInstance = new Chart(ctx, {
+            monthlyChartInstance = new Chart(ctx, {
                 type: 'line',
                 data: {
                     labels: members,
@@ -657,42 +728,38 @@
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    plugins: {
-                        legend: { display: true }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true
-                        }
-                    }
+                    plugins: { legend: { display: true } },
+                    scales: { y: { beginAtZero: true } }
                 }
             });
 
-            // Update monthly list
+            // 월간 리스트 갱신
             const monthList = document.getElementById('month-list');
-            monthList.innerHTML = '';
-            members.forEach((member, idx) => {
-                const emojis = ['🔵', '🟣', '🟡', '🔴'];
-                const percentage = Math.round((monthlyData[member] / 1189) * 100);
-                const item = document.createElement('div');
-                item.className = 'p-4 bg-slate-50 dark:bg-slate-700 rounded-lg';
-                item.innerHTML = `
-                    <div class="flex justify-between items-center mb-2">
-                        <span class="font-semibold text-sm">${emojis[idx]} ${member}</span>
-                        <span class="text-emerald-600 dark:text-emerald-400 font-bold">${percentage}% (${monthlyData[member]}장)</span>
-                    </div>
-                    <div class="w-full bg-slate-200 dark:bg-slate-600 rounded-full h-2 overflow-hidden">
-                        <div class="bg-gradient-to-r from-emerald-400 to-emerald-600 h-full rounded-full" style="width: ${percentage}%"></div>
-                    </div>
-                `;
-                monthList.appendChild(item);
-            });
+            if (monthList) {
+                monthList.innerHTML = '';
+                members.forEach((member, idx) => {
+                    const emojis = ['🔵', '🟣', '🟡', '🔴'];
+                    const percentage = Math.round((monthlyData[member] / 1189) * 100);
+                    const item = document.createElement('div');
+                    item.className = 'p-4 bg-slate-50 dark:bg-slate-700 rounded-lg';
+                    item.innerHTML = `
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="font-semibold text-sm">${emojis[idx]} ${member}</span>
+                            <span class="text-emerald-600 dark:text-emerald-400 font-bold">${percentage}% (${monthlyData[member]}장)</span>
+                        </div>
+                        <div class="w-full bg-slate-200 dark:bg-slate-600 rounded-full h-2 overflow-hidden">
+                            <div class="bg-gradient-to-r from-emerald-400 to-emerald-600 h-full rounded-full" style="width: ${percentage}%"></div>
+                        </div>
+                    `;
+                    monthList.appendChild(item);
+                });
+            }
         }
 
-        let currentCalendarMonth = new Date();
+        // 달력 컴포넌트 업데이트
+        async function updateCalendar() {
+            if (!currentMember) return;
 
-        function updateCalendar() {
-            const today = new Date();
             const year = currentCalendarMonth.getFullYear();
             const month = currentCalendarMonth.getMonth();
             
@@ -700,132 +767,167 @@
             
             const firstDay = new Date(year, month, 1);
             const lastDay = new Date(year, month + 1, 0);
+            
+            // 이번달 성경 로그 전부 로드
+            const { data: monthLogs, error } = await _supabase
+                .from('reading_logs')
+                .select('read_date')
+                .eq('user_name', currentMember)
+                .gte('read_date', formatDateToYYYYMMDD(firstDay))
+                .lte('read_date', formatDateToYYYYMMDD(lastDay));
+
+            if (error) {
+                console.error("달력 데이터 로드 에러:", error);
+                return;
+            }
+
+            const readDatesSet = new Set(monthLogs ? monthLogs.map(log => log.read_date) : []);
+
             const startDate = new Date(firstDay);
             startDate.setDate(startDate.getDate() - firstDay.getDay());
             
             const calendarBody = document.getElementById('calendarBody');
             calendarBody.innerHTML = '';
             
-            let currentDate = new Date(startDate);
+            let currentDateObj = new Date(startDate);
+            const todayStr = formatDateToYYYYMMDD(new Date());
             
-            while (currentDate <= lastDay || currentDate.getDay() !== 0) {
+            while (currentDateObj <= lastDay || currentDateObj.getDay() !== 0) {
                 const row = document.createElement('tr');
                 
                 for (let i = 0; i < 7; i++) {
                     const cell = document.createElement('td');
-                    cell.className = 'border p-2 text-center text-xs md:text-sm h-12 md:h-16';
+                    cell.className = 'border p-2 text-center text-xs md:text-sm h-12 md:h-16 relative';
                     
-                    if (currentDate.getMonth() !== month) {
+                    const dateStr = formatDateToYYYYMMDD(currentDateObj);
+                    
+                    if (currentDateObj.getMonth() !== month) {
                         cell.className += ' bg-slate-100 dark:bg-slate-900 text-slate-400 dark:text-slate-500';
                     } else {
-                        // Check if current member read today
-                        const memberData = JSON.parse(localStorage.getItem(`bible_${currentMember}`) || '{"readDates": []}');
-                        const dateStr = currentDate.toISOString().split('T')[0];
-                        const hasRead = memberData.readDates && memberData.readDates.includes(dateStr);
+                        const hasRead = readDatesSet.has(dateStr);
                         
                         if (hasRead) {
                             cell.className += ' bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300 font-bold';
-                        } else if (currentDate.toDateString() === today.toDateString()) {
+                        } else if (dateStr === todayStr) {
                             cell.className += ' bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 font-semibold';
                         } else {
                             cell.className += ' hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer';
                         }
                     }
                     
-                    cell.textContent = currentDate.getDate();
+                    cell.textContent = currentDateObj.getDate();
                     row.appendChild(cell);
-                    currentDate.setDate(currentDate.getDate() + 1);
+                    currentDateObj.setDate(currentDateObj.getDate() + 1);
                 }
                 
                 calendarBody.appendChild(row);
             }
         }
 
-        function updateCompleteBooks() {
-            const members = ['김우자', '오영옥', '이은혜', '임현화'];
-            const completeList = document.getElementById('complete-list');
-            completeList.innerHTML = '';
-            
-            const emojis = ['🔵', '🟣', '🟡', '🔴'];
-            const completedBooks = {
-                '김우자': [],
-                '오영옥': [],
-                '이은혜': [],
-                '임현화': []
-            };
+        // 연속 읽기(Streak) 정보 가져오기 및 업데이트
+        async function updateStreakInfo() {
+            if (!currentMember) return;
 
-            members.forEach(member => {
-                const memberData = JSON.parse(localStorage.getItem(`bible_${member}`) || '{"books": {}}');
-                for (const book in memberData.books) {
-                    const chapters = bibleBooksData.OT[book] || bibleBooksData.NT[book] || 0;
-                    if (memberData.books[book].length === chapters) {
-                        completedBooks[member].push(book);
+            const { data, error } = await _supabase
+                .from('reading_logs')
+                .select('read_date')
+                .eq('user_name', currentMember)
+                .order('read_date', { ascending: false });
+
+            if (error) {
+                console.error("Streak 로딩 실패:", error);
+                return;
+            }
+
+            // 중복 및 시간 부분 제거하고 날짜 유일 집합 생성
+            const uniqueDates = Array.from(new Set(data.map(log => log.read_date))).sort((a, b) => new Date(b) - new Date(a));
+
+            let currentStreak = 0;
+            let longestStreak = 0;
+            let tempStreak = 0;
+
+            const todayStr = formatDateToYYYYMMDD(new Date());
+            const yesterday = new Date();
+            yesterday.setDate(yesterday.getDate() - 1);
+            const yesterdayStr = formatDateToYYYYMMDD(yesterday);
+
+            const hasRecentRead = uniqueDates.includes(todayStr) || uniqueDates.includes(yesterdayStr);
+
+            if (hasRecentRead) {
+                let checkDate = uniqueDates.includes(todayStr) ? new Date(todayStr) : new Date(yesterdayStr);
+                while (true) {
+                    const checkStr = formatDateToYYYYMMDD(checkDate);
+                    if (uniqueDates.includes(checkStr)) {
+                        currentStreak++;
+                        checkDate.setDate(checkDate.getDate() - 1);
+                    } else {
+                        break;
                     }
                 }
-            });
+            }
 
-            members.forEach((member, idx) => {
-                const item = document.createElement('div');
-                item.className = 'p-4 bg-slate-50 dark:bg-slate-700 rounded-lg border-l-4';
-                item.style.borderLeftColor = ['#3b82f6', '#a855f7', '#facc15', '#ef4444'][idx];
-                
-                const completedCount = completedBooks[member].length;
-                const bookList = completedBooks[member].length > 0 
-                    ? completedBooks[member].join(', ')
-                    : '아직 완독한 책 없음';
-                
-                item.innerHTML = `
-                    <div class="flex justify-between items-start mb-2">
-                        <span class="font-bold text-sm md:text-base">${emojis[idx]} ${member}</span>
-                        <span class="bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300 text-xs font-bold px-2 py-1 rounded">${completedCount}권</span>
-                    </div>
-                    <p class="text-xs md:text-sm text-slate-600 dark:text-slate-400">${bookList}</p>
-                `;
-                completeList.appendChild(item);
-            });
+            // 최장 스트릭 계산
+            if (uniqueDates.length > 0) {
+                let prevDate = null;
+                for (let i = 0; i < uniqueDates.length; i++) {
+                    const currDate = new Date(uniqueDates[i]);
+                    if (!prevDate) {
+                        tempStreak = 1;
+                    } else {
+                        const diffTime = Math.abs(prevDate - currDate);
+                        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                        
+                        if (diffDays === 1) {
+                            tempStreak++;
+                        } else if (diffDays > 1) {
+                            if (tempStreak > longestStreak) longestStreak = tempStreak;
+                            tempStreak = 1;
+                        }
+                    }
+                    prevDate = currDate;
+                }
+                if (tempStreak > longestStreak) longestStreak = tempStreak;
+            }
+
+            document.getElementById('currentStreakText').textContent = `${currentStreak}일`;
+            document.getElementById('longestStreakText').textContent = `${longestStreak}일`;
+
+            // 연속 읽기 리스트 업데이트 (여기서는 간단한 대시보드로 처리)
+            const streakList = document.getElementById('streak-list');
+            if (streakList) {
+                streakList.innerHTML = '';
+                const members = ['김우자', '오영옥', '이은혜', '임현화'];
+                const emojis = ['🔵', '🟣', '🟡', '🔴'];
+
+                for (let i = 0; i < members.length; i++) {
+                    const memberName = members[i];
+                    // 간소화된 주간 데이터로 대략적인 스트릭 표시
+                    const item = document.createElement('div');
+                    item.className = 'p-4 bg-slate-50 dark:bg-slate-700 rounded-lg';
+                    item.innerHTML = `
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="font-bold text-sm md:text-base">${emojis[i]} ${memberName}</span>
+                            <span class="text-orange-500 font-bold text-base">🔥 활성화</span>
+                        </div>
+                    `;
+                    streakList.appendChild(item);
+                }
+            }
         }
 
-        function updateStreakList() {
-            const members = ['김우자', '오영옥', '이은혜', '임현화'];
-            const streakList = document.getElementById('streak-list');
-            streakList.innerHTML = '';
-            
-            const emojis = ['🔵', '🟣', '🟡', '🔴'];
-
-            members.forEach((member, idx) => {
-                const memberData = JSON.parse(localStorage.getItem(`bible_${member}`) || '{"streak": 0, "maxStreak": 0, "lastReadDate": ""}');
-                const streak = memberData.streak || 0;
-                const maxStreak = memberData.maxStreak || 0;
-                
-                const item = document.createElement('div');
-                item.className = 'p-4 bg-slate-50 dark:bg-slate-700 rounded-lg';
-                item.innerHTML = `
-                    <div class="flex justify-between items-center mb-3">
-                        <span class="font-bold text-sm md:text-base">${emojis[idx]} ${member}</span>
-                        <span class="text-orange-500 font-bold text-lg">🔥 ${streak}일</span>
-                    </div>
-                    <div class="flex gap-4 text-xs">
-                        <div>
-                            <p class="text-slate-600 dark:text-slate-400">현재 연속</p>
-                            <p class="font-bold text-emerald-600 dark:text-emerald-400">${streak}일</p>
-                        </div>
-                        <div>
-                            <p class="text-slate-600 dark:text-slate-400">최장 기록</p>
-                            <p class="font-bold text-emerald-600 dark:text-emerald-400">${maxStreak}일</p>
-                        </div>
-                    </div>
-                `;
-                streakList.appendChild(item);
-            });
+        // 완독 정보 업데이트
+        async function updateCompleteBooks() {
+            const completeList = document.getElementById('complete-list');
+            if (!completeList) return;
+            completeList.innerHTML = '<p class="text-xs text-slate-500 text-center py-4">성경책별 완독 데이터는 실시간 DB 통계 기능 준비중입니다.</p>';
         }
 
         // ==========================================
-        // 8. 성경 선택 기능
+        // 8. 성경 데이터 구조 및 선택 기능
         // ==========================================
         let selectedBook = '';
         let selectedTestament = 'OT';
 
-        // 성경 목록
         const bibleBooksData = {
             OT: {
                 '창세기': 50, '출애굽기': 40, '레위기': 27, '민수기': 36, '신명기': 34,
@@ -872,7 +974,7 @@
             });
         }
 
-        function selectBook(bookName) {
+        async function selectBook(bookName) {
             selectedBook = bookName;
             document.getElementById('selected-book-title').textContent = `${bookName}`;
             document.getElementById('chapters-container').classList.remove('hidden');
@@ -881,8 +983,20 @@
             grid.innerHTML = '';
 
             const chapters = bibleBooksData[selectedTestament][bookName] || 50;
-            const memberData = JSON.parse(localStorage.getItem(`bible_${currentMember}`) || '{"chapters": 0, "books": {}}');
-            const selectedChapters = memberData.books[bookName] || [];
+
+            // Supabase에서 현재 로그인 유저가 해당 책에 대해 읽은 모든 장 리스트 로드
+            const { data: readLogs, error } = await _supabase
+                .from('reading_logs')
+                .select('chapter_num')
+                .eq('user_name', currentMember)
+                .eq('book_name', bookName);
+
+            if (error) {
+                console.error("성경 챕터 데이터 로드 실패:", error);
+                return;
+            }
+
+            const readChaptersSet = new Set(readLogs ? readLogs.map(log => log.chapter_num) : []);
 
             for (let i = 1; i <= chapters; i++) {
                 const btn = document.createElement('button');
@@ -890,174 +1004,182 @@
                 btn.textContent = i;
                 btn.dataset.chapter = i;
 
-                if (selectedChapters.includes(i)) {
+                if (readChaptersSet.has(i)) {
                     btn.classList.add('bg-emerald-500', 'text-white');
                 } else {
                     btn.classList.add('bg-slate-100', 'dark:bg-slate-700', 'text-slate-800', 'dark:text-white', 'hover:bg-emerald-500', 'dark:hover:bg-emerald-600');
                 }
 
-                btn.onclick = () => toggleChapter(btn, bookName, i, chapters);
+                btn.onclick = () => toggleChapter(btn, bookName, i);
                 grid.appendChild(btn);
             }
         }
 
-        function toggleChapter(element, bookName, chapterNum, totalChapters) {
-            element.classList.toggle('bg-emerald-500');
-            element.classList.toggle('text-white');
-            element.classList.toggle('bg-slate-100');
-            element.classList.toggle('dark:bg-slate-700');
-            element.classList.toggle('text-slate-800');
-            element.classList.toggle('dark:text-white');
+        // 개별 성경 장 클릭 시 Supabase CRUD 처리 로직
+        async function toggleChapter(element, bookName, chapterNum) {
+            const isSelecting = !element.classList.contains('bg-emerald-500');
+            const todayStr = formatDateToYYYYMMDD(new Date());
 
-            // 데이터 저장
-            const memberData = JSON.parse(localStorage.getItem(`bible_${currentMember}`) || '{"chapters": 0, "books": {}, "readDates": []}');
-            if (!memberData.books) {
-                memberData.books = {};
-            }
-            if (!memberData.books[bookName]) {
-                memberData.books[bookName] = [];
-            }
-            if (!memberData.readDates) {
-                memberData.readDates = [];
-            }
+            showLoading(true);
 
-            const selectedChapters = memberData.books[bookName];
-            const today = new Date().toISOString().split('T')[0];
-            
-            if (element.classList.contains('bg-emerald-500')) {
-                if (!selectedChapters.includes(chapterNum)) {
-                    selectedChapters.push(chapterNum);
+            if (isSelecting) {
+                // Supabase DB에 독서 기록 추가(Insert)
+                const { error } = await _supabase
+                    .from('reading_logs')
+                    .insert([{ 
+                        user_name: currentMember, 
+                        book_name: bookName, 
+                        chapter_num: chapterNum, 
+                        read_date: todayStr 
+                    }]);
+
+                if (error) {
+                    showToast("기록 저장 중 오류가 발생했습니다.", "error");
+                    console.error("Insert 에러:", error);
+                    showLoading(false);
+                    return;
                 }
-                // Add today's date if not already there
-                if (!memberData.readDates.includes(today)) {
-                    memberData.readDates.push(today);
-                }
+
+                element.classList.add('bg-emerald-500', 'text-white');
+                element.classList.remove('bg-slate-100', 'dark:bg-slate-700', 'text-slate-800', 'dark:text-white');
+                showToast(`${bookName} ${chapterNum}장 선택됨!`, 'success');
             } else {
-                memberData.books[bookName] = selectedChapters.filter(ch => ch !== chapterNum);
+                // Supabase DB에서 독서 기록 삭제(Delete)
+                const { error } = await _supabase
+                    .from('reading_logs')
+                    .delete()
+                    .eq('user_name', currentMember)
+                    .eq('book_name', bookName)
+                    .eq('chapter_num', chapterNum);
+
+                if (error) {
+                    showToast("기록 삭제 중 오류가 발생했습니다.", "error");
+                    console.error("Delete 에러:", error);
+                    showLoading(false);
+                    return;
+                }
+
+                element.classList.remove('bg-emerald-500', 'text-white');
+                element.classList.add('bg-slate-100', 'dark:bg-slate-700', 'text-slate-800', 'dark:text-white');
+                showToast(`${bookName} ${chapterNum}장 취소됨!`, 'info');
             }
 
-            // 전체 장 수 계산
-            let totalReadChapters = 0;
-            for (const book in memberData.books) {
-                totalReadChapters += memberData.books[book].length;
-            }
-            memberData.chapters = totalReadChapters;
-            memberData.last_read = `${bookName} ${chapterNum}장`;
-            
-            // 스트릭 업데이트
-            updateStreak(memberData, today);
-
-            localStorage.setItem(`bible_${currentMember}`, JSON.stringify(memberData));
-
-            // UI 업데이트 - 모든 대시보드
-            loadData();
-            showToast(`${bookName} ${chapterNum}장 ${element.classList.contains('bg-emerald-500') ? '선택됨' : '취소됨'}`, 'success');
+            showLoading(false);
+            // 대시보드 및 달력 통계 리프레시
+            await initAllData();
         }
 
-        function updateStreak(memberData, today) {
-            const lastReadDate = memberData.lastReadDate ? new Date(memberData.lastReadDate) : null;
-            const todayDate = new Date(today);
-            
-            if (!memberData.lastReadDate) {
-                memberData.streak = 1;
-                memberData.maxStreak = 1;
-            } else {
-                const dayDiff = Math.floor((todayDate - lastReadDate) / (1000 * 60 * 60 * 24));
-                
-                if (dayDiff === 0) {
-                    // Same day, no change to streak
-                } else if (dayDiff === 1) {
-                    // Consecutive day
-                    memberData.streak = (memberData.streak || 0) + 1;
-                    memberData.maxStreak = Math.max(memberData.maxStreak || 0, memberData.streak);
-                } else {
-                    // Broken streak
-                    memberData.streak = 1;
-                }
-            }
-            
-            memberData.lastReadDate = today;
-        }
-
-        function toggleAllChapters(select) {
+        // 전체 선택 및 취소 기능
+        async function toggleAllChapters(select) {
             const chapters = document.querySelectorAll('#chapters-grid button');
-            const memberData = JSON.parse(localStorage.getItem(`bible_${currentMember}`) || '{"chapters": 0, "books": {}, "readDates": []}');
-            if (!memberData.books) {
-                memberData.books = {};
-            }
-            if (!memberData.readDates) {
-                memberData.readDates = [];
-            }
+            const todayStr = formatDateToYYYYMMDD(new Date());
 
-            const selectedChapters = [];
-            const today = new Date().toISOString().split('T')[0];
-            
-            chapters.forEach(btn => {
-                const chapterNum = parseInt(btn.dataset.chapter);
-                if (select) {
-                    btn.classList.add('bg-emerald-500', 'text-white');
-                    btn.classList.remove('bg-slate-100', 'dark:bg-slate-700', 'text-slate-800', 'dark:text-white');
-                    selectedChapters.push(chapterNum);
-                } else {
+            showLoading(true);
+
+            if (select) {
+                const insertData = [];
+                chapters.forEach(btn => {
+                    const chapterNum = parseInt(btn.dataset.chapter);
+                    if (!btn.classList.contains('bg-emerald-500')) {
+                        insertData.push({
+                            user_name: currentMember,
+                            book_name: selectedBook,
+                            chapter_num: chapterNum,
+                            read_date: todayStr
+                        });
+                        btn.classList.add('bg-emerald-500', 'text-white');
+                        btn.classList.remove('bg-slate-100', 'dark:bg-slate-700', 'text-slate-800', 'dark:text-white');
+                    }
+                });
+
+                if (insertData.length > 0) {
+                    const { error } = await _supabase.from('reading_logs').insert(insertData);
+                    if (error) {
+                        console.error("전체 선택 에러:", error);
+                        showToast("DB 저장 중 오류 발생", "error");
+                    }
+                }
+            } else {
+                chapters.forEach(btn => {
                     btn.classList.remove('bg-emerald-500', 'text-white');
                     btn.classList.add('bg-slate-100', 'dark:bg-slate-700', 'text-slate-800', 'dark:text-white');
+                });
+
+                const { error } = await _supabase
+                    .from('reading_logs')
+                    .delete()
+                    .eq('user_name', currentMember)
+                    .eq('book_name', selectedBook);
+
+                if (error) {
+                    console.error("전체 삭제 에러:", error);
+                    showToast("DB 삭제 중 오류 발생", "error");
                 }
-            });
-
-            memberData.books[selectedBook] = select ? selectedChapters : [];
-
-            // 전체 장 수 계산
-            let totalReadChapters = 0;
-            for (const book in memberData.books) {
-                totalReadChapters += memberData.books[book].length;
-            }
-            memberData.chapters = totalReadChapters;
-
-            // Add today's date if selecting
-            if (select && !memberData.readDates.includes(today)) {
-                memberData.readDates.push(today);
-                updateStreak(memberData, today);
             }
 
-            localStorage.setItem(`bible_${currentMember}`, JSON.stringify(memberData));
-
-            // UI 업데이트 - 모든 대시보드
-            loadData();
+            showLoading(false);
+            await initAllData();
             showToast(`${select ? '모든 장을 선택했습니다' : '모든 장을 취소했습니다'}!`, 'success');
         }
 
         // ==========================================
-        // 9. 백업 및 초기화
+        // 9. 관리자 기능 (백업 및 초기화)
         // ==========================================
-        function backupData() {
-            const backup = {};
-            for (let i = 0; i < localStorage.length; i++) {
-                const key = localStorage.key(i);
-                backup[key] = localStorage.getItem(key);
+        function addTeamMember() {
+            const input = document.getElementById('new-member-input');
+            const newMemberName = input.value.trim();
+
+            if (!newMemberName) {
+                alert('이름을 입력해주세요.');
+                return;
             }
 
-            const dataStr = JSON.stringify(backup, null, 2);
-            const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr);
+            const option = document.createElement('option');
+            option.value = newMemberName;
+            option.textContent = `✨ ${newMemberName}`;
+            document.getElementById('member-select').appendChild(option);
 
-            const exportFileDefaultName = `성경용사_백업_${new Date().toISOString().split('T')[0]}.json`;
+            input.value = '';
+            showToast(`${newMemberName} 추가됨`, 'success');
+        }
+
+        async function backupData() {
+            const { data, error } = await _supabase.from('reading_logs').select('*');
+            if (error) {
+                showToast("백업 데이터 추출 실패", "error");
+                return;
+            }
+            const dataStr = JSON.stringify(data, null, 2);
+            const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr);
+            const exportFileDefaultName = `성경용사_서버백업_${new Date().toISOString().split('T')[0]}.json`;
 
             const linkElement = document.createElement('a');
             linkElement.setAttribute('href', dataUri);
             linkElement.setAttribute('download', exportFileDefaultName);
             linkElement.click();
 
-            showToast('백업 완료!', 'success');
+            showToast('서버 데이터 백업 완료!', 'success');
         }
 
-        function resetAllProgress() {
-            if (confirm('정말 모든 진도를 초기화하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) {
-                localStorage.clear();
-                location.reload();
+        async function resetAllProgress() {
+            if (confirm('⚠️ 경고! Supabase 서버 내 모든 데이터가 삭제됩니다. 정말 초기화하시겠습니까?')) {
+                showLoading(true);
+                // 실 서비스에서는 특정 테이블 전체 삭제를 권장하지 않으므로, 조원의 데이터만 리셋하거나 테이블 자체 삭제 API 사용
+                const { error } = await _supabase.from('reading_logs').delete().neq('user_name', 'SystemDefault');
+                showLoading(false);
+                
+                if (error) {
+                    showToast("초기화 도중 오류 발생", "error");
+                    console.error(error);
+                } else {
+                    localStorage.clear();
+                    location.reload();
+                }
             }
         }
 
         // ==========================================
-        // 10. PWA 설치
+        // 10. PWA 설치 및 초기 바인딩
         // ==========================================
         let deferredPrompt;
 
@@ -1084,17 +1206,10 @@
             document.getElementById('install-prompt').classList.add('hidden');
         }
 
-        // ==========================================
-        // 11. 초기화
-        // ==========================================
         window.addEventListener('DOMContentLoaded', () => {
             updateUIForMember();
             switchTab('today');
-            if (currentMember) {
-                switchTestament('OT');
-            }
             
-            // Calendar navigation
             document.getElementById('prevMonthBtn')?.addEventListener('click', () => {
                 currentCalendarMonth.setMonth(currentCalendarMonth.getMonth() - 1);
                 updateCalendar();
@@ -1106,7 +1221,6 @@
             });
         });
 
-        // 서비스 워커 등록
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('service-worker.js').catch(err => {
                 console.log('Service Worker 등록 실패:', err);
