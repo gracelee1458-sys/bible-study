@@ -106,13 +106,20 @@
 </head>
 <body class="min-h-screen pb-20">
 
+    <!-- 로딩 스피너 -->
+    <div id="loadingSpinner" class="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50 hidden">
+        <div class="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-emerald-500"></div>
+    </div>
+
     <!-- 상단 헤더 -->
     <header class="bg-gradient-to-r from-emerald-600 to-emerald-700 text-white shadow-lg sticky top-0 z-40 py-4 md:py-6">
         <div class="max-w-5xl mx-auto px-4">
             <div class="flex justify-between items-center">
                 <div class="text-left">
                     <h1 class="text-2xl md:text-3xl font-bold tracking-tight">📖 성경용사</h1>
-                    <p class="text-emerald-100 text-xs md:text-sm mt-0.5">함께 읽는 성경 | 실시간 동기화</p>
+                    <p class="text-emerald-100 text-xs md:text-sm mt-0.5">함께 읽는 성경 | 실시간 동기화
+                        <a href="https://github.com/gracelee1458/bible-study" target="_blank" rel="noopener noreferrer" class="inline-block ml-2 hover:text-white transition">📱 GitHub</a>
+                    </p>
                 </div>
                 <button onclick="toggleDarkMode()" class="text-2xl hover:opacity-80 transition">🌙</button>
             </div>
@@ -123,7 +130,7 @@
     <main class="max-w-5xl mx-auto px-3 md:px-4 py-6 space-y-6">
         
         <!-- 1. 로그인 영역 -->
-        <section class="bg-white dark:bg-slate-800 rounded-2xl p-4 md:p-6 shadow-sm border border-slate-100 dark:border-slate-700">
+        <section id="login-section" class="bg-white dark:bg-slate-800 rounded-2xl p-4 md:p-6 shadow-sm border border-slate-100 dark:border-slate-700">
             <div class="flex gap-2 flex-col md:flex-row">
                 <select id="member-select" class="flex-1 px-4 py-2.5 border border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 transition text-sm md:text-base">
                     <option value="">👤 조원을 선택하세요</option>
@@ -175,54 +182,79 @@
             <!-- 📅 오늘 탭 -->
             <div id="tab-today" class="tab-content bg-white dark:bg-slate-800 rounded-2xl p-4 md:p-6 shadow-sm border border-slate-100 dark:border-slate-700">
                 <h3 class="text-lg font-bold text-slate-800 dark:text-white mb-4">📅 오늘 (<span id="today-date"></span>)</h3>
-                <div id="today-list" class="space-y-2">
-                    <!-- 동적 로딩 -->
-                </div>
+                <div id="today-list" class="space-y-2"></div>
             </div>
 
             <!-- 📊 이번주 탭 -->
             <div id="tab-week" class="tab-content bg-white dark:bg-slate-800 rounded-2xl p-4 md:p-6 shadow-sm border border-slate-100 dark:border-slate-700 hidden">
                 <h3 class="text-lg font-bold text-slate-800 dark:text-white mb-4">📊 이번주 랭킹</h3>
-                <div id="week-list" class="space-y-2">
-                    <!-- 동적 로딩 -->
+                <div class="h-64 relative w-full">
+                    <canvas id="weeklyChart"></canvas>
                 </div>
+                <div id="week-list" class="space-y-2 mt-4"></div>
             </div>
 
             <!-- 📈 이번달 탭 -->
             <div id="tab-month" class="tab-content bg-white dark:bg-slate-800 rounded-2xl p-4 md:p-6 shadow-sm border border-slate-100 dark:border-slate-700 hidden">
                 <h3 class="text-lg font-bold text-slate-800 dark:text-white mb-4">📈 이번달 진도</h3>
-                <div id="month-list" class="space-y-3">
-                    <!-- 동적 로딩 -->
+                <div class="h-64 relative w-full">
+                    <canvas id="monthlyChart"></canvas>
                 </div>
+                <div id="month-list" class="space-y-3 mt-4"></div>
             </div>
 
             <!-- 🗓️ 달력 탭 -->
             <div id="tab-calendar" class="tab-content bg-white dark:bg-slate-800 rounded-2xl p-4 md:p-6 shadow-sm border border-slate-100 dark:border-slate-700 hidden">
-                <h3 class="text-lg font-bold text-slate-800 dark:text-white mb-4">🗓️ 독경 달력</h3>
-                <div id="calendar-view" class="grid grid-cols-7 gap-1">
-                    <!-- 동적 로딩 -->
+                <div class="flex justify-between items-center mb-4">
+                    <h3 id="calendarTitle" class="text-lg font-bold text-slate-800 dark:text-white"></h3>
+                    <div class="flex gap-2">
+                        <button id="prevMonthBtn" class="px-3 py-1 bg-slate-100 dark:bg-slate-700 rounded-md text-sm hover:bg-slate-200">이전달</button>
+                        <button id="nextMonthBtn" class="px-3 py-1 bg-slate-100 dark:bg-slate-700 rounded-md text-sm hover:bg-slate-200">다음달</button>
+                    </div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full min-w-[600px] border-collapse">
+                        <thead>
+                            <tr class="bg-slate-50 dark:bg-slate-700">
+                                <th class="border p-2 text-red-500">일</th>
+                                <th class="border p-2">월</th>
+                                <th class="border p-2">화</th>
+                                <th class="border p-2">수</th>
+                                <th class="border p-2">목</th>
+                                <th class="border p-2">금</th>
+                                <th class="border p-2 text-blue-500">토</th>
+                            </tr>
+                        </thead>
+                        <tbody id="calendarBody"></tbody>
+                    </table>
                 </div>
             </div>
 
             <!-- 🔥 연속 읽기 탭 -->
             <div id="tab-streak" class="tab-content bg-white dark:bg-slate-800 rounded-2xl p-4 md:p-6 shadow-sm border border-slate-100 dark:border-slate-700 hidden">
                 <h3 class="text-lg font-bold text-slate-800 dark:text-white mb-6">🔥 연속 읽기</h3>
-                <div id="streak-list" class="space-y-4">
-                    <!-- 동적 로딩 -->
+                <div class="grid grid-cols-2 gap-4 mb-6">
+                    <div class="bg-slate-50 dark:bg-slate-700 p-4 rounded-xl text-center">
+                        <p class="text-xs text-slate-500 dark:text-slate-400">현재 연속</p>
+                        <p id="currentStreakText" class="text-2xl font-bold text-orange-500 mt-1">0일</p>
+                    </div>
+                    <div class="bg-slate-50 dark:bg-slate-700 p-4 rounded-xl text-center">
+                        <p class="text-xs text-slate-500 dark:text-slate-400">최장 연속</p>
+                        <p id="longestStreakText" class="text-2xl font-bold text-emerald-500 mt-1">0일</p>
+                    </div>
                 </div>
+                <div id="streak-list" class="space-y-4"></div>
             </div>
 
             <!-- 🎉 책 완독 탭 -->
             <div id="tab-complete" class="tab-content bg-white dark:bg-slate-800 rounded-2xl p-4 md:p-6 shadow-sm border border-slate-100 dark:border-slate-700 hidden">
                 <h3 class="text-lg font-bold text-slate-800 dark:text-white mb-4">🎉 책 완독 현황</h3>
-                <div id="complete-list" class="space-y-3">
-                    <!-- 동적 로딩 -->
-                </div>
+                <div id="complete-list" class="space-y-3"></div>
             </div>
 
         </div>
 
-        <!-- 4. 개인 진도 (로그인 후) -->
+        <!-- 4. 개인 진도 -->
         <section id="progress-section" class="bg-white dark:bg-slate-800 rounded-2xl p-4 md:p-6 shadow-sm border border-slate-100 dark:border-slate-700 hidden">
             <div class="flex justify-between items-center mb-3">
                 <h2 class="text-base md:text-lg font-bold text-slate-800 dark:text-white">🙋 나의 진도율</h2>
@@ -234,7 +266,7 @@
             <p id="progress-count" class="text-xs md:text-sm text-slate-500 dark:text-slate-400 mt-2 text-right">0 / 1189 장 읽음</p>
         </section>
 
-        <!-- 5. 팀 랭킹 (로그인 후) -->
+        <!-- 5. 팀 랭킹 -->
         <section id="team-section" class="bg-white dark:bg-slate-800 rounded-2xl p-4 md:p-6 shadow-sm border border-slate-100 dark:border-slate-700 hidden">
             <div class="mb-4 pb-4 border-b border-slate-100 dark:border-slate-700">
                 <div class="flex justify-between items-center mb-2">
@@ -245,12 +277,10 @@
                     <div id="team-average-bar" class="progress-bar bg-gradient-to-r from-emerald-400 to-emerald-600 h-full w-0 rounded-full"></div>
                 </div>
             </div>
-            <div id="team-list" class="space-y-2">
-                <!-- 동적 로딩 -->
-            </div>
+            <div id="team-list" class="space-y-2"></div>
         </section>
 
-        <!-- 6. 성경 선택 (로그인 후) -->
+        <!-- 6. 성경 선택 -->
         <section id="bible-section" class="bg-white dark:bg-slate-800 rounded-2xl p-4 md:p-6 shadow-sm border border-slate-100 dark:border-slate-700 hidden">
             <div class="flex gap-3 mb-6 border-b border-slate-100 dark:border-slate-700 pb-4">
                 <button onclick="switchTestament('OT')" id="tab-OT" class="flex-1 py-3 text-center font-bold border-b-2 border-emerald-600 text-emerald-600 transition text-sm md:text-base">구약</button>
@@ -279,835 +309,809 @@
     <div id="install-prompt" class="install-prompt hidden">
         <p class="text-sm font-bold mb-2">📱 홈 화면에 추가하시겠어요?</p>
         <div class="flex gap-2">
-            <button onclick="installPWA()" class="bg-emerald-600 text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-emerald-700 transition">추가</button>
-            <button onclick="closePWAPrompt()" class="bg-slate-200 text-slate-700 px-4 py-2 rounded-lg text-xs font-bold hover:bg-slate-300 transition">닫기</button>
+            <button onclick="installPWA()" class="bg-emerald-600 text-white px-4 py-2 rounded-lg text-xs font-bold">설치</button>
+            <button onclick="hideInstallPrompt()" class="bg-slate-200 text-slate-700 px-4 py-2 rounded-lg text-xs font-bold">취소</button>
         </div>
     </div>
 
+    <!-- 스크립트 영역 -->
     <script>
-        // Supabase 설정
-        const SUPABASE_URL = "https://bvgpnnhfslakhfpwecsc.supabase.co";
-        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ2Z3Bubmhmc2xha2hmcHdlY3NjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQwMzMyMjQsImV4cCI6MjA5OTYwOTIyNH0.qSaODE9r8VILSsok7cLpTGNrpomUMDQegUFoEtmS2nA";
-        
+        // ==========================================
+        // 1. 글로벌 상태 및 초기 변수 선언
+        // ==========================================
+        const SUPABASE_URL = "https://bvgpnnhfslakhfpwecsc.supabase.co"; 
+        const SUPABASE_KEY = "sb_publishable_6jix0T8L_hxKQ_tDVfLc5Q_eGgNzJiT";
+
         const { createClient } = supabase;
-        const _supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        const _supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        // 성경 데이터
-        const bibleBooks = [
-            { name: "창세기", chapters: 50, testament: "OT" }, { name: "출애굽기", chapters: 40, testament: "OT" },
-            { name: "레위기", chapters: 27, testament: "OT" }, { name: "민수기", chapters: 36, testament: "OT" },
-            { name: "신명기", chapters: 34, testament: "OT" }, { name: "여호수아", chapters: 24, testament: "OT" },
-            { name: "사사기", chapters: 21, testament: "OT" }, { name: "룻기", chapters: 4, testament: "OT" },
-            { name: "사무엘상", chapters: 31, testament: "OT" }, { name: "사무엘하", chapters: 24, testament: "OT" },
-            { name: "열왕기상", chapters: 22, testament: "OT" }, { name: "열왕기하", chapters: 25, testament: "OT" },
-            { name: "역대기상", chapters: 29, testament: "OT" }, { name: "역대기하", chapters: 36, testament: "OT" },
-            { name: "에스라", chapters: 10, testament: "OT" }, { name: "느헤미야", chapters: 13, testament: "OT" },
-            { name: "에스더", chapters: 10, testament: "OT" }, { name: "욥기", chapters: 42, testament: "OT" },
-            { name: "시편", chapters: 150, testament: "OT" }, { name: "잠언", chapters: 31, testament: "OT" },
-            { name: "전도서", chapters: 12, testament: "OT" }, { name: "아가", chapters: 8, testament: "OT" },
-            { name: "이사야", chapters: 66, testament: "OT" }, { name: "예레미야", chapters: 52, testament: "OT" },
-            { name: "예레미야 애가", chapters: 5, testament: "OT" }, { name: "에스겔", chapters: 48, testament: "OT" },
-            { name: "다니엘", chapters: 12, testament: "OT" }, { name: "호세아", chapters: 14, testament: "OT" },
-            { name: "요엘", chapters: 3, testament: "OT" }, { name: "아모스", chapters: 9, testament: "OT" },
-            { name: "오바디야", chapters: 1, testament: "OT" }, { name: "요나", chapters: 4, testament: "OT" },
-            { name: "미가", chapters: 7, testament: "OT" }, { name: "나훔", chapters: 3, testament: "OT" },
-            { name: "하박국", chapters: 3, testament: "OT" }, { name: "스바냐", chapters: 3, testament: "OT" },
-            { name: "학개", chapters: 2, testament: "OT" }, { name: "스가랴", chapters: 14, testament: "OT" },
-            { name: "말라기", chapters: 4, testament: "OT" },
+        // 테스트용 콘솔 로그 (연결 상태 확인)
+        console.log("Supabase Client 초기화 성공:", _supabase);
 
-            { name: "마태복음", chapters: 28, testament: "NT" }, { name: "마가복음", chapters: 16, testament: "NT" },
-            { name: "누가복음", chapters: 24, testament: "NT" }, { name: "요한복음", chapters: 21, testament: "NT" },
-            { name: "사도행전", chapters: 28, testament: "NT" }, { name: "로마서", chapters: 16, testament: "NT" },
-            { name: "고린도전서", chapters: 16, testament: "NT" }, { name: "고린도후서", chapters: 13, testament: "NT" },
-            { name: "갈라디아서", chapters: 6, testament: "NT" }, { name: "에베소서", chapters: 6, testament: "NT" },
-            { name: "빌립보서", chapters: 4, testament: "NT" }, { name: "골로새서", chapters: 4, testament: "NT" },
-            { name: "데살로니가전서", chapters: 5, testament: "NT" }, { name: "데살로니가후서", chapters: 3, testament: "NT" },
-            { name: "디모데전서", chapters: 6, testament: "NT" }, { name: "디모데후서", chapters: 4, testament: "NT" },
-            { name: "디도서", chapters: 3, testament: "NT" }, { name: "빌레몬서", chapters: 1, testament: "NT" },
-            { name: "히브리서", chapters: 13, testament: "NT" }, { name: "야고보서", chapters: 5, testament: "NT" },
-            { name: "베드로전서", chapters: 5, testament: "NT" }, { name: "베드로후서", chapters: 3, testament: "NT" },
-            { name: "요한일서", chapters: 5, testament: "NT" }, { name: "요한이서", chapters: 1, testament: "NT" },
-            { name: "요한삼서", chapters: 1, testament: "NT" }, { name: "유다서", chapters: 1, testament: "NT" },
-            { name: "요한계시록", chapters: 22, testament: "NT" }
-        ];
+        // ==========================================
+        // 2. 사용자 관리 (Member Management)
+        // ==========================================
+        let currentMember = localStorage.getItem('currentMember') || '';
 
-        const MEMBER_COLORS = {
-            "김우자": "🔵",
-            "오영옥": "🟣",
-            "이은혜": "🟡",
-            "임현화": "🔴"
-        };
+        function saveMember() {
+            const memberSelect = document.getElementById('member-select');
+            const selectedMember = memberSelect.value;
 
-        const TEAM_NAME = "성경용사";
-        const SYSTEM_KEY = "__SYSTEM__";
-
-        let currentMember = "";
-        let currentTestament = "OT";
-        let selectedBook = null;
-        let readLogs = new Set();
-        let deferredPrompt = null;
-        let currentTab = "today";
-
-        // ==================== 초기화 ====================
-        window.onload = async function() {
-            const savedMember = localStorage.getItem("bible_member");
-            if (savedMember) {
-                document.getElementById("member-select").value = savedMember;
-                currentMember = savedMember;
-                await loadUserData();
-            }
-            
-            // PWA 설치 리스너
-            window.addEventListener('beforeinstallprompt', (e) => {
-                e.preventDefault();
-                deferredPrompt = e;
-                document.getElementById("install-prompt").classList.remove("hidden");
-            });
-
-            // 오늘 날짜 표시
-            updateTodayDate();
-
-            // 서비스워커 등록
-            if ('serviceWorker' in navigator) {
-                navigator.serviceWorker.register('service-worker.js').catch(err => {
-                    console.log('SW 등록 실패:', err);
-                });
-            }
-        };
-
-        // ==================== 로그인 ====================
-        async function saveMember() {
-            const name = document.getElementById("member-select").value;
-            if (!name) {
-                showToast("조원을 선택해주세요!", "error");
+            if (!selectedMember) {
+                alert('조원을 선택해주세요.');
                 return;
             }
 
-            currentMember = name;
-            localStorage.setItem("bible_member", currentMember);
-            showToast(`${currentMember}님 환영합니다! 👋`, "success");
-            await loadUserData();
-        }
-
-        async function loadUserData() {
-            document.getElementById("current-user-text").textContent = `현재 접속: ${currentMember}`;
-            document.getElementById("progress-section").classList.remove("hidden");
-            document.getElementById("team-section").classList.remove("hidden");
-            document.getElementById("bible-section").classList.remove("hidden");
-            document.getElementById("stats-section").classList.remove("hidden");
-
-            if (currentMember === "이은혜") {
-                document.getElementById("admin-section").classList.remove("hidden");
-            }
-
-            try {
-                const { data, error } = await _supabase
-                    .from('reading_logs')
-                    .select('book, chapter, created_at')
-                    .eq('member', currentMember);
-
-                if (error) throw error;
-
-                readLogs.clear();
-                data.forEach(log => {
-                    readLogs.add(`${log.book}-${log.chapter}`);
-                });
-
-                renderBibleGrid();
-                updateProgressBar();
-                await loadTeamProgress();
-                await loadStats();
-
-                if (selectedBook) {
-                    renderChaptersGrid();
-                }
-            } catch (err) {
-                console.error(err);
-                showToast("데이터 로드 실패", "error");
-            }
-        }
-
-        // ==================== 팀 진도 ====================
-        async function loadTeamProgress() {
-            try {
-                const { data, error } = await _supabase
-                    .from('reading_logs')
-                    .select('member')
-                    .neq('member', SYSTEM_KEY);
-
-                if (error) throw error;
-
-                const counts = {
-                    "김우자": 0,
-                    "오영옥": 0,
-                    "이은혜": 0,
-                    "임현화": 0
-                };
-
-                let totalReadChapters = 0;
-                data.forEach(log => {
-                    const name = log.member.trim();
-                    if (counts.hasOwnProperty(name)) {
-                        counts[name]++;
-                        totalReadChapters++;
-                    }
-                });
-
-                const totalMembers = 4;
-                const maxPossible = totalMembers * 1189;
-                const teamAverage = maxPossible > 0 ? ((totalReadChapters / maxPossible) * 100).toFixed(1) : "0.0";
-
-                document.getElementById("team-average-percent").textContent = `${teamAverage}%`;
-                document.getElementById("team-average-bar").style.width = `${teamAverage}%`;
-
-                // 팀 랭킹
-                const sorted = Object.entries(counts)
-                    .map(([name, count]) => ({ name, count }))
-                    .sort((a, b) => b.count - a.count);
-
-                const listEl = document.getElementById("team-list");
-                listEl.innerHTML = "";
-
-                sorted.forEach((member, index) => {
-                    const totalChapters = 1189;
-                    const percent = ((member.count / totalChapters) * 100).toFixed(1);
-                    const isMe = member.name === currentMember;
-                    
-                    let medal = `<span class="text-slate-400 w-6 text-center">${index + 1}</span>`;
-                    if (index === 0) medal = `<span class="medal">🥇</span>`;
-                    if (index === 1) medal = `<span class="medal">🥈</span>`;
-                    if (index === 2) medal = `<span class="medal">🥉</span>`;
-
-                    const item = document.createElement("div");
-                    item.className = `flex items-center justify-between p-3 md:p-4 rounded-xl transition-all ${
-                        isMe ? 'bg-emerald-50 dark:bg-emerald-950 border border-emerald-200 dark:border-emerald-800' : 'bg-slate-50 dark:bg-slate-700 border border-transparent'
-                    }`;
-                    item.innerHTML = `
-                        <div class="flex items-center gap-3">
-                            ${medal}
-                            <div>
-                                <span class="font-bold text-sm md:text-base ${isMe ? 'text-emerald-700 dark:text-emerald-400' : 'text-slate-700 dark:text-slate-300'}">
-                                    ${MEMBER_COLORS[member.name]} ${member.name}
-                                </span>
-                            </div>
-                        </div>
-                        <div class="flex items-center gap-3 md:gap-4">
-                            <div class="w-20 md:w-32 bg-slate-200 dark:bg-slate-600 rounded-full h-2 overflow-hidden hidden sm:block">
-                                <div class="bg-emerald-500 h-full" style="width: ${percent}%"></div>
-                            </div>
-                            <span class="text-sm font-bold text-slate-700 dark:text-slate-300 w-10 text-right">${percent}%</span>
-                            <span class="text-xs text-slate-400 dark:text-slate-500 font-semibold">${member.count}장</span>
-                        </div>
-                    `;
-                    listEl.appendChild(item);
-                });
-
-            } catch (err) {
-                console.error(err);
-            }
-        }
-
-        // ==================== 통계 ====================
-        async function loadStats() {
-            try {
-                const { data, error } = await _supabase
-                    .from('reading_logs')
-                    .select('member, created_at')
-                    .neq('member', SYSTEM_KEY);
-
-                if (error) throw error;
-
-                // 날짜별 통계
-                const today = new Date().toISOString().split('T')[0];
-                const weekStart = getWeekStart();
-                const monthStart = getMonthStart();
-
-                // 오늘 통계
-                const todayData = data.filter(log => log.created_at.split('T')[0] === today);
-                renderTodayStats(todayData);
-
-                // 주간 통계
-                const weekData = data.filter(log => log.created_at.split('T')[0] >= weekStart);
-                renderWeekStats(weekData);
-
-                // 월간 통계
-                const monthData = data.filter(log => log.created_at.split('T')[0] >= monthStart);
-                renderMonthStats(monthData);
-
-                // 달력
-                renderCalendar(data);
-
-                // 스트릭
-                renderStreak(data);
-
-                // 완독
-                renderComplete();
-
-            } catch (err) {
-                console.error(err);
-            }
-        }
-
-        // ==================== 통계 렌더링 ====================
-        function renderTodayStats(todayData) {
-            const counts = {
-                "김우자": 0,
-                "오영옥": 0,
-                "이은혜": 0,
-                "임현화": 0
-            };
-
-            todayData.forEach(log => {
-                const name = log.member.trim();
-                if (counts.hasOwnProperty(name)) {
-                    counts[name]++;
-                }
-            });
-
-            const listEl = document.getElementById("today-list");
-            listEl.innerHTML = "";
-
-            Object.entries(counts).forEach(([name, count]) => {
-                const hasRead = count > 0;
-                const item = document.createElement("div");
-                item.className = `flex items-center justify-between p-3 md:p-4 rounded-xl checkbox-item ${
-                    hasRead ? 'bg-emerald-50 dark:bg-emerald-950' : 'bg-slate-50 dark:bg-slate-700'
-                }`;
-                item.innerHTML = `
-                    <span class="font-bold text-sm md:text-base ${hasRead ? 'text-emerald-700 dark:text-emerald-400' : 'text-slate-600 dark:text-slate-400'}">
-                        ${MEMBER_COLORS[name]} ${name}
-                    </span>
-                    <div class="flex items-center gap-3">
-                        <span class="font-bold text-sm md:text-base text-slate-700 dark:text-slate-300">${count}장</span>
-                        <span class="text-xl">${hasRead ? '✅' : '❌'}</span>
-                    </div>
-                `;
-                listEl.appendChild(item);
-            });
-        }
-
-        function renderWeekStats(weekData) {
-            const counts = {
-                "김우자": 0,
-                "오영옥": 0,
-                "이은혜": 0,
-                "임현화": 0
-            };
-
-            weekData.forEach(log => {
-                const name = log.member.trim();
-                if (counts.hasOwnProperty(name)) {
-                    counts[name]++;
-                }
-            });
-
-            const sorted = Object.entries(counts)
-                .map(([name, count]) => ({ name, count }))
-                .sort((a, b) => b.count - a.count);
-
-            const listEl = document.getElementById("week-list");
-            listEl.innerHTML = "";
-
-            sorted.forEach((item, index) => {
-                let medal = index < 3 ? ['🥇', '🥈', '🥉'][index] : `${index + 1}`;
-                const el = document.createElement("div");
-                el.className = "flex items-center justify-between p-3 md:p-4 rounded-xl bg-slate-50 dark:bg-slate-700";
-                el.innerHTML = `
-                    <div class="flex items-center gap-3">
-                        <span class="text-2xl">${medal}</span>
-                        <span class="font-bold text-sm md:text-base text-slate-700 dark:text-slate-300">${MEMBER_COLORS[item.name]} ${item.name}</span>
-                    </div>
-                    <span class="font-bold text-lg text-emerald-600 dark:text-emerald-400">${item.count}장</span>
-                `;
-                listEl.appendChild(el);
-            });
-        }
-
-        function renderMonthStats(monthData) {
-            const counts = {
-                "김우자": 0,
-                "오영옥": 0,
-                "이은혜": 0,
-                "임현화": 0
-            };
-
-            monthData.forEach(log => {
-                const name = log.member.trim();
-                if (counts.hasOwnProperty(name)) {
-                    counts[name]++;
-                }
-            });
-
-            const listEl = document.getElementById("month-list");
-            listEl.innerHTML = "";
-
-            Object.entries(counts).forEach(([name, count]) => {
-                const avgPerDay = (count / new Date().getDate()).toFixed(1);
-                const el = document.createElement("div");
-                el.className = "space-y-2 p-3 md:p-4 bg-slate-50 dark:bg-slate-700 rounded-xl";
-                el.innerHTML = `
-                    <div class="flex justify-between items-center">
-                        <span class="font-bold text-sm md:text-base text-slate-700 dark:text-slate-300">${MEMBER_COLORS[name]} ${name}</span>
-                        <span class="font-bold text-lg text-emerald-600 dark:text-emerald-400">${count}장</span>
-                    </div>
-                    <div class="flex justify-between items-center text-xs text-slate-500 dark:text-slate-400">
-                        <span>평균</span>
-                        <span>${avgPerDay}장/일</span>
-                    </div>
-                `;
-                listEl.appendChild(el);
-            });
-        }
-
-        function renderCalendar(data) {
-            const now = new Date();
-            const year = now.getFullYear();
-            const month = now.getMonth();
+            currentMember = selectedMember;
+            localStorage.setItem('currentMember', selectedMember);
             
-            const firstDay = new Date(year, month, 1).getDay();
-            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            // UI 업데이트
+            updateUIForMember();
+            showToast(`${selectedMember}님이 입장했습니다! 👋`, 'success');
+        }
 
-            const counts = {};
-            data.forEach(log => {
-                const date = log.created_at.split('T')[0];
-                const [y, m, d] = date.split('-');
-                if (y == year && parseInt(m) == month + 1) {
-                    counts[d] = (counts[d] || 0) + 1;
-                }
-            });
-
-            const grid = document.getElementById("calendar-view");
-            grid.innerHTML = "";
-
-            // 요일 헤더
-            const days = ['일', '월', '화', '수', '목', '금', '토'];
-            days.forEach(day => {
-                const el = document.createElement("div");
-                el.className = "text-center font-bold text-xs md:text-sm text-slate-600 dark:text-slate-400 py-2";
-                el.textContent = day;
-                grid.appendChild(el);
-            });
-
-            // 빈 칸
-            for (let i = 0; i < firstDay; i++) {
-                grid.appendChild(document.createElement("div"));
-            }
-
-            // 날짜
-            for (let day = 1; day <= daysInMonth; day++) {
-                const el = document.createElement("div");
-                const count = counts[String(day).padStart(2, '0')] || 0;
-                el.className = `aspect-square flex flex-col items-center justify-center rounded-lg text-xs md:text-sm font-bold transition-all ${
-                    count > 0 ? 'bg-emerald-500 dark:bg-emerald-600 text-white' : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
-                }`;
-                el.innerHTML = `<div>${day}</div><div class="text-[10px] opacity-80">${count > 0 ? count + '장' : ''}</div>`;
-                grid.appendChild(el);
+        function updateUIForMember() {
+            const currentUserText = document.getElementById('current-user-text');
+            if (currentMember) {
+                currentUserText.innerHTML = `현재 사용자: <strong>${currentMember}</strong> <button onclick="logoutMember()" class="ml-2 px-3 py-1 bg-slate-300 dark:bg-slate-600 text-slate-800 dark:text-white rounded text-xs font-semibold hover:bg-slate-400 dark:hover:bg-slate-500 transition">전환</button>`;
+                document.getElementById('login-section').style.display = 'none';
+                document.getElementById('stats-section').style.display = 'block';
+                document.getElementById('progress-section').style.display = 'block';
+                document.getElementById('team-section').style.display = 'block';
+                document.getElementById('bible-section').style.display = 'block';
+                loadData();
+            } else {
+                currentUserText.textContent = '로그인이 필요합니다.';
+                document.getElementById('stats-section').style.display = 'none';
+                document.getElementById('progress-section').style.display = 'none';
+                document.getElementById('team-section').style.display = 'none';
+                document.getElementById('bible-section').style.display = 'none';
             }
         }
 
-        function renderStreak(data) {
-            const now = new Date();
-            const streaks = {
-                "김우자": calculateStreak(data, "김우자"),
-                "오영옥": calculateStreak(data, "오영옥"),
-                "이은혜": calculateStreak(data, "이은혜"),
-                "임현화": calculateStreak(data, "임현화")
-            };
-
-            const listEl = document.getElementById("streak-list");
-            listEl.innerHTML = "";
-
-            Object.entries(streaks).forEach(([name, streak]) => {
-                const el = document.createElement("div");
-                el.className = "p-4 md:p-6 bg-gradient-to-br from-orange-50 to-red-50 dark:from-orange-950 dark:to-red-950 rounded-xl border border-orange-200 dark:border-orange-800";
-                el.innerHTML = `
-                    <div class="flex justify-between items-center mb-2">
-                        <span class="font-bold text-sm md:text-base text-slate-700 dark:text-slate-300">${MEMBER_COLORS[name]} ${name}</span>
-                        <span class="fire-animation text-3xl">🔥</span>
-                    </div>
-                    <div class="text-3xl md:text-4xl font-extrabold text-orange-600 dark:text-orange-400 mb-1">${streak.current}일</div>
-                    <div class="text-xs md:text-sm text-slate-600 dark:text-slate-400">최고: ${streak.max}일</div>
-                `;
-                listEl.appendChild(el);
-            });
+        function logoutMember() {
+            currentMember = '';
+            localStorage.removeItem('currentMember');
+            document.getElementById('member-select').value = '';
+            updateUIForMember();
+            showToast('로그아웃되었습니다.', 'success');
         }
 
-        function renderComplete() {
-            const listEl = document.getElementById("complete-list");
-            listEl.innerHTML = "";
-
-            bibleBooks.forEach(book => {
-                const readCount = Array.from(readLogs).filter(key => key.startsWith(`${book.name}-`)).length;
-                const percent = ((readCount / book.chapters) * 100).toFixed(0);
-                const isCompleted = readCount === book.chapters;
-
-                const el = document.createElement("div");
-                el.className = `p-3 md:p-4 rounded-xl ${isCompleted ? 'bg-emerald-50 dark:bg-emerald-950 border border-emerald-200 dark:border-emerald-800' : 'bg-slate-50 dark:bg-slate-700'}`;
-                el.innerHTML = `
-                    <div class="flex justify-between items-center mb-2">
-                        <span class="font-bold text-sm text-slate-700 dark:text-slate-300">${book.name}</span>
-                        <span class="font-bold text-emerald-600 dark:text-emerald-400">${percent}%</span>
-                    </div>
-                    <div class="w-full bg-slate-200 dark:bg-slate-600 rounded-full h-2 overflow-hidden">
-                        <div class="bg-emerald-500 h-full" style="width: ${percent}%"></div>
-                    </div>
-                    ${isCompleted ? '<div class="mt-2 text-center text-xl">🎉 완독!</div>' : ''}
-                `;
-                listEl.appendChild(el);
-            });
-        }
-
-        // ==================== 성경 선택 ====================
-        function switchTestament(testament) {
-            currentTestament = testament;
-            document.getElementById("tab-OT").className = testament === 'OT' 
-                ? "flex-1 py-3 text-center font-bold border-b-2 border-emerald-600 text-emerald-600 transition text-sm md:text-base"
-                : "flex-1 py-3 text-center font-bold border-b-2 border-transparent text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition text-sm md:text-base";
-            document.getElementById("tab-NT").className = testament === 'NT' 
-                ? "flex-1 py-3 text-center font-bold border-b-2 border-emerald-600 text-emerald-600 transition text-sm md:text-base"
-                : "flex-1 py-3 text-center font-bold border-b-2 border-transparent text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition text-sm md:text-base";
-
-            renderBibleGrid();
-        }
-
-        function renderBibleGrid() {
-            const grid = document.getElementById("bible-grid");
-            grid.innerHTML = "";
-
-            const filtered = bibleBooks.filter(b => b.testament === currentTestament);
-            filtered.forEach(book => {
-                const readCount = Array.from(readLogs).filter(key => key.startsWith(`${book.name}-`)).length;
-                const isCompleted = readCount === book.chapters;
-
-                const btn = document.createElement("button");
-                btn.className = `flex flex-col items-center justify-center p-2 md:p-3 rounded-lg border text-xs md:text-sm transition-all duration-200 ${
-                    selectedBook && selectedBook.name === book.name
-                        ? "border-emerald-600 bg-emerald-50 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 font-bold scale-105"
-                        : isCompleted
-                        ? "border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-400 font-medium"
-                        : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300"
-                }`;
-                btn.onclick = () => selectBook(book);
-                btn.innerHTML = `
-                    <span class="truncate w-full text-center text-[11px] md:text-sm">${book.name}</span>
-                    <span class="text-[9px] md:text-xs mt-0.5 opacity-70">${readCount}/${book.chapters}</span>
-                `;
-                grid.appendChild(btn);
-            });
-        }
-
-        function selectBook(book) {
-            selectedBook = book;
-            document.getElementById("chapters-container").classList.remove("hidden");
-            document.getElementById("selected-book-title").textContent = `📖 ${book.name} (${book.chapters}장)`;
-            renderBibleGrid();
-            renderChaptersGrid();
-        }
-
-        function renderChaptersGrid() {
-            const grid = document.getElementById("chapters-grid");
-            grid.innerHTML = "";
-
-            for (let i = 1; i <= selectedBook.chapters; i++) {
-                const key = `${selectedBook.name}-${i}`;
-                const isRead = readLogs.has(key);
-
-                const btn = document.createElement("button");
-                btn.className = `py-2 md:py-3 rounded-lg border text-xs md:text-sm font-semibold transition-all duration-150 ${
-                    isRead 
-                        ? "bg-emerald-500 dark:bg-emerald-600 text-white border-emerald-500 dark:border-emerald-600 hover:bg-emerald-600 dark:hover:bg-emerald-700" 
-                        : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700"
-                }`;
-                btn.textContent = `${i}`;
-                btn.onclick = () => toggleChapter(i);
-                btn.oncontextmenu = (e) => {
-                    e.preventDefault();
-                    showChapterInfo(i);
-                };
-                grid.appendChild(btn);
-            }
-        }
-
-        async function toggleChapter(chapterNum) {
-            const key = `${selectedBook.name}-${chapterNum}`;
-            const isRead = readLogs.has(key);
-
-            try {
-                if (!isRead) {
-                    const { error } = await _supabase
-                        .from('reading_logs')
-                        .insert([{ 
-                            member: currentMember, 
-                            book: selectedBook.name, 
-                            chapter: chapterNum,
-                            created_at: new Date().toISOString()
-                        }]);
-                    if (error) throw error;
-                    readLogs.add(key);
-                } else {
-                    const { error } = await _supabase
-                        .from('reading_logs')
-                        .delete()
-                        .eq('member', currentMember)
-                        .eq('book', selectedBook.name)
-                        .eq('chapter', chapterNum);
-                    if (error) throw error;
-                    readLogs.delete(key);
-                }
-
-                renderChaptersGrid();
-                renderBibleGrid();
-                updateProgressBar();
-                await loadTeamProgress();
-                await loadStats();
-            } catch (err) {
-                console.error(err);
-                showToast("오류 발생", "error");
-            }
-        }
-
-        function showChapterInfo(chapterNum) {
-            alert(`${selectedBook.name} ${chapterNum}장\n\n누가 읽었는지 보려면 개발 예정 중입니다.`);
-        }
-
-        async function toggleAllChapters(shouldSelectAll) {
-            if (!selectedBook) return;
-
-            try {
-                if (shouldSelectAll) {
-                    const toInsert = [];
-                    for (let i = 1; i <= selectedBook.chapters; i++) {
-                        const key = `${selectedBook.name}-${i}`;
-                        if (!readLogs.has(key)) {
-                            toInsert.push({ 
-                                member: currentMember, 
-                                book: selectedBook.name, 
-                                chapter: i,
-                                created_at: new Date().toISOString()
-                            });
-                        }
-                    }
-
-                    if (toInsert.length > 0) {
-                        const { error } = await _supabase.from('reading_logs').insert(toInsert);
-                        if (error) throw error;
-                        toInsert.forEach(item => readLogs.add(`${item.book}-${item.chapter}`));
-                    }
-                    showToast(`${selectedBook.name} 전체 완료! 🎉`, "success");
-                } else {
-                    const { error } = await _supabase
-                        .from('reading_logs')
-                        .delete()
-                        .eq('member', currentMember)
-                        .eq('book', selectedBook.name);
-                    if (error) throw error;
-
-                    for (let i = 1; i <= selectedBook.chapters; i++) {
-                        readLogs.delete(`${selectedBook.name}-${i}`);
-                    }
-                    showToast(`${selectedBook.name} 전체 취소`, "info");
-                }
-
-                renderChaptersGrid();
-                renderBibleGrid();
-                updateProgressBar();
-                await loadTeamProgress();
-                await loadStats();
-            } catch (err) {
-                console.error(err);
-                showToast("오류 발생", "error");
-            }
-        }
-
-        // ==================== 진도 ====================
-        function updateProgressBar() {
-            const totalChapters = 1189;
-            const myCount = readLogs.size;
-            const percent = ((myCount / totalChapters) * 100).toFixed(1);
-
-            document.getElementById("progress-percent").textContent = `${percent}%`;
-            document.getElementById("progress-bar").style.width = `${percent}%`;
-            document.getElementById("progress-count").textContent = `${myCount} / ${totalChapters} 장 읽음`;
-        }
-
-        // ==================== 탭 전환 ====================
-        function switchTab(tab) {
-            currentTab = tab;
-
-            // 탭 버튼 활성화
-            document.querySelectorAll('.tab-btn').forEach(btn => {
-                btn.classList.remove('active', 'bg-emerald-600', 'text-white');
-                btn.classList.add('text-slate-600', 'dark:text-slate-400');
-            });
-            document.querySelector(`[data-tab="${tab}"]`).classList.add('active', 'bg-emerald-600', 'text-white');
-
-            // 탭 콘텐츠 표시
-            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
-            document.getElementById(`tab-${tab}`).classList.remove('hidden');
-        }
-
-        // ==================== 유틸리티 ====================
-        function updateTodayDate() {
-            const today = new Date();
-            const dateStr = `${today.getMonth() + 1}월 ${today.getDate()}일`;
-            document.getElementById("today-date").textContent = dateStr;
-        }
-
-        function getWeekStart() {
-            const now = new Date();
-            const day = now.getDay();
-            const diff = now.getDate() - day;
-            const weekStart = new Date(now.setDate(diff));
-            return weekStart.toISOString().split('T')[0];
-        }
-
-        function getMonthStart() {
-            const now = new Date();
-            return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
-        }
-
-        function calculateStreak(data, member) {
-            const dates = new Set();
-            data.forEach(log => {
-                if (log.member === member) {
-                    dates.add(log.created_at.split('T')[0]);
-                }
-            });
-
-            if (dates.size === 0) return { current: 0, max: 0 };
-
-            const sortedDates = Array.from(dates).sort().reverse();
-            let current = 0;
-            let max = 0;
-            let expectedDate = new Date();
-
-            for (let i = 0; i < sortedDates.length; i++) {
-                const logDate = new Date(sortedDates[i]);
-                const daysDiff = Math.floor((expectedDate - logDate) / (1000 * 60 * 60 * 24));
-
-                if (daysDiff === 0 || daysDiff === 1) {
-                    current++;
-                    max = Math.max(max, current);
-                    expectedDate = new Date(logDate);
-                } else {
-                    break;
-                }
-            }
-
-            return { current, max };
-        }
-
-        function showToast(message, type = "success") {
-            const container = document.getElementById("toast-container");
-            const toast = document.createElement("div");
-            
-            const bgClass = type === "success" 
-                ? "bg-emerald-600 text-white" 
-                : type === "error" 
-                ? "bg-red-600 text-white" 
-                : "bg-blue-600 text-white";
-
-            toast.className = `px-4 md:px-5 py-2 md:py-3 rounded-lg shadow-lg text-xs md:text-sm font-semibold transform translate-y-4 opacity-0 transition-all duration-300 pointer-events-auto ${bgClass}`;
-            toast.textContent = message;
-
-            container.appendChild(toast);
-
-            setTimeout(() => {
-                toast.classList.remove("translate-y-4", "opacity-0");
-            }, 10);
-
-            setTimeout(() => {
-                toast.classList.add("translate-y-4", "opacity-0");
-                setTimeout(() => toast.remove(), 300);
-            }, 2500);
-        }
-
+        // ==========================================
+        // 3. 다크 모드
+        // ==========================================
         function toggleDarkMode() {
             document.body.classList.toggle('dark-mode');
-            localStorage.setItem('dark-mode', document.body.classList.contains('dark-mode'));
+            localStorage.setItem('darkMode', document.body.classList.contains('dark-mode'));
         }
 
-        // 저장된 다크모드 설정 로드
-        if (localStorage.getItem('dark-mode') === 'true') {
+        // 초기 다크모드 설정
+        if (localStorage.getItem('darkMode') === 'true') {
             document.body.classList.add('dark-mode');
         }
 
-        // ==================== PWA ====================
-        function installPWA() {
-            if (deferredPrompt) {
-                deferredPrompt.prompt();
-                deferredPrompt.userChoice.then(choice => {
-                    if (choice.outcome === 'accepted') {
-                        showToast("홈 화면에 추가되었습니다! 🎉", "success");
-                    }
-                    deferredPrompt = null;
-                    closePWAPrompt();
-                });
+        // ==========================================
+        // 4. 탭 전환
+        // ==========================================
+        function switchTab(tabName) {
+            // 모든 탭 숨기기
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.add('hidden');
+            });
+
+            // 모든 탭 버튼 비활성화
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('active', 'bg-emerald-100', 'dark:bg-emerald-900', 'text-emerald-700', 'dark:text-emerald-300');
+            });
+
+            // 선택된 탭 표시
+            const selectedTab = document.getElementById(`tab-${tabName}`);
+            if (selectedTab) {
+                selectedTab.classList.remove('hidden');
+            }
+
+            // 선택된 버튼 활성화
+            const selectedBtn = document.querySelector(`[data-tab="${tabName}"]`);
+            if (selectedBtn) {
+                selectedBtn.classList.add('active', 'bg-emerald-100', 'dark:bg-emerald-900', 'text-emerald-700', 'dark:text-emerald-300');
+            }
+
+            // Load data for specific tabs
+            if (tabName === 'week') {
+                updateWeeklyStats();
+            } else if (tabName === 'month') {
+                updateMonthlyStats();
+            } else if (tabName === 'calendar') {
+                updateCalendar();
+            } else if (tabName === 'streak') {
+                updateStreakList();
+            } else if (tabName === 'complete') {
+                updateCompleteBooks();
             }
         }
 
-        function closePWAPrompt() {
-            document.getElementById("install-prompt").classList.add("hidden");
+        // ==========================================
+        // 5. 토스트 알림
+        // ==========================================
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `px-4 py-3 rounded-lg font-semibold text-white animate-bounce pointer-events-auto ${
+                type === 'success' ? 'bg-emerald-500' : type === 'error' ? 'bg-red-500' : 'bg-blue-500'
+            }`;
+            toast.textContent = message;
+            
+            container.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.remove();
+            }, 3000);
         }
 
-        // ==================== 관리자 기능 ====================
-        async function addTeamMember() {
-            const name = document.getElementById("new-member-input").value.trim();
-            if (!name) {
-                showToast("이름을 입력하세요", "error");
+        // ==========================================
+        // 6. 팀 관리
+        // ==========================================
+        function addTeamMember() {
+            const input = document.getElementById('new-member-input');
+            const newMemberName = input.value.trim();
+
+            if (!newMemberName) {
+                alert('이름을 입력해주세요.');
                 return;
             }
 
-            showToast("기능 준비 중입니다", "info");
+            const option = document.createElement('option');
+            option.value = newMemberName;
+            option.textContent = `✨ ${newMemberName}`;
+            document.getElementById('member-select').appendChild(option);
+
+            input.value = '';
+            showToast(`${newMemberName} 추가됨`, 'success');
         }
 
-        async function backupData() {
-            try {
-                const { data, error } = await _supabase
-                    .from('reading_logs')
-                    .select('*');
+        // ==========================================
+        // 7. 데이터 저장 및 로드
+        // ==========================================
+        function loadData() {
+            updateProgressBar();
+            updateTeamStats();
+            updateTodayList();
+            updateStreakInfo();
+            updateWeeklyStats();
+            updateMonthlyStats();
+            updateCalendar();
+            updateCompleteBooks();
+        }
 
-                if (error) throw error;
+        function updateProgressBar() {
+            const progressBar = document.getElementById('progress-bar');
+            const progressPercent = document.getElementById('progress-percent');
+            const progressCount = document.getElementById('progress-count');
 
-                let csv = "이름,책,장,날짜\n";
-                data.forEach(row => {
-                    csv += `${row.member},"${row.book}",${row.chapter},"${row.created_at}"\n`;
+            const memberData = JSON.parse(localStorage.getItem(`bible_${currentMember}`) || '{"chapters": 0, "books": {}}');
+            const totalChapters = 1189;
+            const chaptersRead = memberData.chapters || 0;
+            const percentage = Math.round((chaptersRead / totalChapters) * 100);
+
+            progressBar.style.width = percentage + '%';
+            progressPercent.textContent = percentage + '%';
+            progressCount.textContent = `${chaptersRead} / ${totalChapters} 장 읽음`;
+        }
+
+        function updateTeamStats() {
+            const teamList = document.getElementById('team-list');
+            teamList.innerHTML = '';
+
+            const members = ['김우자', '오영옥', '이은혜', '임현화'];
+            let totalChapters = 0;
+
+            members.forEach((member, index) => {
+                const memberData = JSON.parse(localStorage.getItem(`bible_${member}`) || '{"chapters": 0}');
+                const chapters = memberData.chapters || 0;
+                totalChapters += chapters;
+
+                const percentage = Math.round((chapters / 1189) * 100);
+                const emojis = ['🔵', '🟣', '🟡', '🔴'];
+
+                const item = document.createElement('div');
+                item.className = 'p-3 bg-slate-50 dark:bg-slate-700 rounded-lg flex justify-between items-center';
+                item.innerHTML = `
+                    <span class="font-semibold text-sm md:text-base">${emojis[index]} ${member}</span>
+                    <span class="text-emerald-600 dark:text-emerald-400 font-bold">${percentage}% (${chapters}장)</span>
+                `;
+                teamList.appendChild(item);
+            });
+
+            const teamAverage = Math.round((totalChapters / (1189 * 4)) * 100);
+            document.getElementById('team-average-percent').textContent = teamAverage + '%';
+            document.getElementById('team-average-bar').style.width = teamAverage + '%';
+        }
+
+        function updateTodayList() {
+            const todayList = document.getElementById('today-list');
+            todayList.innerHTML = '';
+            
+            const today = new Date().toLocaleDateString('ko-KR');
+            document.getElementById('today-date').textContent = today;
+
+            const members = ['김우자', '오영옥', '이은혜', '임현화'];
+            const emojis = ['🔵', '🟣', '🟡', '🔴'];
+
+            members.forEach((member, index) => {
+                const memberData = JSON.parse(localStorage.getItem(`bible_${member}`) || '{"last_read": ""}');
+                const lastRead = memberData.last_read || '아직 없음';
+
+                const item = document.createElement('div');
+                item.className = 'p-3 bg-slate-50 dark:bg-slate-700 rounded-lg flex justify-between items-center';
+                item.innerHTML = `
+                    <span class="font-semibold text-sm">${emojis[index]} ${member}</span>
+                    <span class="text-xs text-slate-600 dark:text-slate-300">${lastRead}</span>
+                `;
+                todayList.appendChild(item);
+            });
+        }
+
+        function updateStreakInfo() {
+            const memberData = JSON.parse(localStorage.getItem(`bible_${currentMember}`) || '{"streak": 0, "maxStreak": 0}');
+            document.getElementById('currentStreakText').textContent = (memberData.streak || 0) + '일';
+            document.getElementById('longestStreakText').textContent = (memberData.maxStreak || 0) + '일';
+        }
+
+        function updateWeeklyStats() {
+            const weeklyChart = document.getElementById('weeklyChart');
+            if (!weeklyChart || !weeklyChart.parentElement) return;
+
+            const members = ['김우자', '오영옥', '이은혜', '임현화'];
+            const weeklyData = {};
+            
+            members.forEach(member => {
+                const memberData = JSON.parse(localStorage.getItem(`bible_${member}`) || '{"chapters": 0}');
+                weeklyData[member] = memberData.chapters || 0;
+            });
+
+            // Destroy existing chart if it exists
+            if (window.weeklyChartInstance) {
+                window.weeklyChartInstance.destroy();
+            }
+
+            const ctx = weeklyChart.getContext('2d');
+            window.weeklyChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: members,
+                    datasets: [{
+                        label: '이번주 읽은 장수',
+                        data: members.map(m => weeklyData[m]),
+                        backgroundColor: ['#3b82f6', '#a855f7', '#facc15', '#ef4444'],
+                        borderColor: ['#1e40af', '#7e22ce', '#ca8a04', '#dc2626'],
+                        borderWidth: 2,
+                        borderRadius: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    indexAxis: 'y',
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            max: 200
+                        }
+                    }
+                }
+            });
+
+            // Update weekly list
+            const weekList = document.getElementById('week-list');
+            weekList.innerHTML = '';
+            members.forEach((member, idx) => {
+                const emojis = ['🔵', '🟣', '🟡', '🔴'];
+                const item = document.createElement('div');
+                item.className = 'p-3 bg-slate-50 dark:bg-slate-700 rounded-lg flex justify-between items-center';
+                item.innerHTML = `
+                    <span class="font-semibold text-sm">${emojis[idx]} ${member}</span>
+                    <span class="text-emerald-600 dark:text-emerald-400 font-bold">${weeklyData[member]}장</span>
+                `;
+                weekList.appendChild(item);
+            });
+        }
+
+        function updateMonthlyStats() {
+            const monthlyChart = document.getElementById('monthlyChart');
+            if (!monthlyChart || !monthlyChart.parentElement) return;
+
+            const members = ['김우자', '오영옥', '이은혜', '임현화'];
+            const monthlyData = {};
+            
+            members.forEach(member => {
+                const memberData = JSON.parse(localStorage.getItem(`bible_${member}`) || '{"chapters": 0}');
+                monthlyData[member] = memberData.chapters || 0;
+            });
+
+            // Destroy existing chart if it exists
+            if (window.monthlyChartInstance) {
+                window.monthlyChartInstance.destroy();
+            }
+
+            const ctx = monthlyChart.getContext('2d');
+            window.monthlyChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: members,
+                    datasets: [{
+                        label: '이번달 누적 진도',
+                        data: members.map(m => monthlyData[m]),
+                        borderColor: '#10b981',
+                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.4,
+                        pointBackgroundColor: '#10b981',
+                        pointRadius: 6,
+                        pointHoverRadius: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: true }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+
+            // Update monthly list
+            const monthList = document.getElementById('month-list');
+            monthList.innerHTML = '';
+            members.forEach((member, idx) => {
+                const emojis = ['🔵', '🟣', '🟡', '🔴'];
+                const percentage = Math.round((monthlyData[member] / 1189) * 100);
+                const item = document.createElement('div');
+                item.className = 'p-4 bg-slate-50 dark:bg-slate-700 rounded-lg';
+                item.innerHTML = `
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="font-semibold text-sm">${emojis[idx]} ${member}</span>
+                        <span class="text-emerald-600 dark:text-emerald-400 font-bold">${percentage}% (${monthlyData[member]}장)</span>
+                    </div>
+                    <div class="w-full bg-slate-200 dark:bg-slate-600 rounded-full h-2 overflow-hidden">
+                        <div class="bg-gradient-to-r from-emerald-400 to-emerald-600 h-full rounded-full" style="width: ${percentage}%"></div>
+                    </div>
+                `;
+                monthList.appendChild(item);
+            });
+        }
+
+        let currentCalendarMonth = new Date();
+
+        function updateCalendar() {
+            const today = new Date();
+            const year = currentCalendarMonth.getFullYear();
+            const month = currentCalendarMonth.getMonth();
+            
+            document.getElementById('calendarTitle').textContent = `${year}년 ${month + 1}월`;
+            
+            const firstDay = new Date(year, month, 1);
+            const lastDay = new Date(year, month + 1, 0);
+            const startDate = new Date(firstDay);
+            startDate.setDate(startDate.getDate() - firstDay.getDay());
+            
+            const calendarBody = document.getElementById('calendarBody');
+            calendarBody.innerHTML = '';
+            
+            let currentDate = new Date(startDate);
+            
+            while (currentDate <= lastDay || currentDate.getDay() !== 0) {
+                const row = document.createElement('tr');
+                
+                for (let i = 0; i < 7; i++) {
+                    const cell = document.createElement('td');
+                    cell.className = 'border p-2 text-center text-xs md:text-sm h-12 md:h-16';
+                    
+                    if (currentDate.getMonth() !== month) {
+                        cell.className += ' bg-slate-100 dark:bg-slate-900 text-slate-400 dark:text-slate-500';
+                    } else {
+                        // Check if current member read today
+                        const memberData = JSON.parse(localStorage.getItem(`bible_${currentMember}`) || '{"readDates": []}');
+                        const dateStr = currentDate.toISOString().split('T')[0];
+                        const hasRead = memberData.readDates && memberData.readDates.includes(dateStr);
+                        
+                        if (hasRead) {
+                            cell.className += ' bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300 font-bold';
+                        } else if (currentDate.toDateString() === today.toDateString()) {
+                            cell.className += ' bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 font-semibold';
+                        } else {
+                            cell.className += ' hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer';
+                        }
+                    }
+                    
+                    cell.textContent = currentDate.getDate();
+                    row.appendChild(cell);
+                    currentDate.setDate(currentDate.getDate() + 1);
+                }
+                
+                calendarBody.appendChild(row);
+            }
+        }
+
+        function updateCompleteBooks() {
+            const members = ['김우자', '오영옥', '이은혜', '임현화'];
+            const completeList = document.getElementById('complete-list');
+            completeList.innerHTML = '';
+            
+            const emojis = ['🔵', '🟣', '🟡', '🔴'];
+            const completedBooks = {
+                '김우자': [],
+                '오영옥': [],
+                '이은혜': [],
+                '임현화': []
+            };
+
+            members.forEach(member => {
+                const memberData = JSON.parse(localStorage.getItem(`bible_${member}`) || '{"books": {}}');
+                for (const book in memberData.books) {
+                    const chapters = bibleBooksData.OT[book] || bibleBooksData.NT[book] || 0;
+                    if (memberData.books[book].length === chapters) {
+                        completedBooks[member].push(book);
+                    }
+                }
+            });
+
+            members.forEach((member, idx) => {
+                const item = document.createElement('div');
+                item.className = 'p-4 bg-slate-50 dark:bg-slate-700 rounded-lg border-l-4';
+                item.style.borderLeftColor = ['#3b82f6', '#a855f7', '#facc15', '#ef4444'][idx];
+                
+                const completedCount = completedBooks[member].length;
+                const bookList = completedBooks[member].length > 0 
+                    ? completedBooks[member].join(', ')
+                    : '아직 완독한 책 없음';
+                
+                item.innerHTML = `
+                    <div class="flex justify-between items-start mb-2">
+                        <span class="font-bold text-sm md:text-base">${emojis[idx]} ${member}</span>
+                        <span class="bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300 text-xs font-bold px-2 py-1 rounded">${completedCount}권</span>
+                    </div>
+                    <p class="text-xs md:text-sm text-slate-600 dark:text-slate-400">${bookList}</p>
+                `;
+                completeList.appendChild(item);
+            });
+        }
+
+        function updateStreakList() {
+            const members = ['김우자', '오영옥', '이은혜', '임현화'];
+            const streakList = document.getElementById('streak-list');
+            streakList.innerHTML = '';
+            
+            const emojis = ['🔵', '🟣', '🟡', '🔴'];
+
+            members.forEach((member, idx) => {
+                const memberData = JSON.parse(localStorage.getItem(`bible_${member}`) || '{"streak": 0, "maxStreak": 0, "lastReadDate": ""}');
+                const streak = memberData.streak || 0;
+                const maxStreak = memberData.maxStreak || 0;
+                
+                const item = document.createElement('div');
+                item.className = 'p-4 bg-slate-50 dark:bg-slate-700 rounded-lg';
+                item.innerHTML = `
+                    <div class="flex justify-between items-center mb-3">
+                        <span class="font-bold text-sm md:text-base">${emojis[idx]} ${member}</span>
+                        <span class="text-orange-500 font-bold text-lg">🔥 ${streak}일</span>
+                    </div>
+                    <div class="flex gap-4 text-xs">
+                        <div>
+                            <p class="text-slate-600 dark:text-slate-400">현재 연속</p>
+                            <p class="font-bold text-emerald-600 dark:text-emerald-400">${streak}일</p>
+                        </div>
+                        <div>
+                            <p class="text-slate-600 dark:text-slate-400">최장 기록</p>
+                            <p class="font-bold text-emerald-600 dark:text-emerald-400">${maxStreak}일</p>
+                        </div>
+                    </div>
+                `;
+                streakList.appendChild(item);
+            });
+        }
+
+        // ==========================================
+        // 8. 성경 선택 기능
+        // ==========================================
+        let selectedBook = '';
+        let selectedTestament = 'OT';
+
+        // 성경 목록
+        const bibleBooksData = {
+            OT: {
+                '창세기': 50, '출애굽기': 40, '레위기': 27, '민수기': 36, '신명기': 34,
+                '여호수아': 24, '사사기': 21, '룻기': 4, '사무엘상': 31, '사무엘하': 24,
+                '열왕기상': 22, '열왕기하': 25, '역대상': 29, '역대하': 36, '에스라': 10,
+                '느헤미야': 13, '에스더': 10, '욥기': 42, '시편': 150, '잠언': 31,
+                '전도서': 12, '이사야': 66, '예레미야': 52, '예레미야애가': 5, '에스겔': 48,
+                '다니엘': 12, '호세아': 14, '요엘': 3, '아모스': 9, '오바댜': 1,
+                '요나': 4, '미가': 7, '나흠': 3, '하박국': 3, '스바냐': 3,
+                '학개': 2, '스가랴': 14, '말라기': 4
+            },
+            NT: {
+                '마태복음': 28, '마가복음': 16, '누가복음': 24, '요한복음': 21, '사도행전': 28,
+                '로마서': 16, '고린도전서': 16, '고린도후서': 13, '갈라디아서': 6, '에베소서': 6,
+                '빌립보서': 4, '골로새서': 4, '데살로니가전서': 5, '데살로니가후서': 3, '디모데전서': 6,
+                '디모데후서': 4, '디도서': 3, '빌레몬서': 1, '히브리서': 13, '야고보서': 5,
+                '베드로전서': 5, '베드로후서': 3, '요한일서': 5, '요한이서': 1, '요한삼서': 1,
+                '유다서': 1, '요한계시록': 22
+            }
+        };
+
+        function switchTestament(testament) {
+            selectedTestament = testament;
+            document.getElementById('tab-OT').classList.toggle('border-emerald-600', testament === 'OT');
+            document.getElementById('tab-OT').classList.toggle('text-emerald-600', testament === 'OT');
+            document.getElementById('tab-OT').classList.toggle('border-transparent', testament !== 'OT');
+            document.getElementById('tab-OT').classList.toggle('text-slate-400', testament !== 'OT');
+
+            document.getElementById('tab-NT').classList.toggle('border-emerald-600', testament === 'NT');
+            document.getElementById('tab-NT').classList.toggle('text-emerald-600', testament === 'NT');
+            document.getElementById('tab-NT').classList.toggle('border-transparent', testament !== 'NT');
+            document.getElementById('tab-NT').classList.toggle('text-slate-400', testament !== 'NT');
+
+            const books = bibleBooksData[testament];
+            const grid = document.getElementById('bible-grid');
+            grid.innerHTML = '';
+
+            Object.keys(books).forEach(book => {
+                const btn = document.createElement('button');
+                btn.className = 'p-2 bg-slate-100 dark:bg-slate-700 hover:bg-emerald-500 dark:hover:bg-emerald-600 text-slate-800 dark:text-white rounded-lg text-xs font-semibold transition';
+                btn.textContent = book;
+                btn.onclick = () => selectBook(book);
+                grid.appendChild(btn);
+            });
+        }
+
+        function selectBook(bookName) {
+            selectedBook = bookName;
+            document.getElementById('selected-book-title').textContent = `${bookName}`;
+            document.getElementById('chapters-container').classList.remove('hidden');
+            
+            const grid = document.getElementById('chapters-grid');
+            grid.innerHTML = '';
+
+            const chapters = bibleBooksData[selectedTestament][bookName] || 50;
+            const memberData = JSON.parse(localStorage.getItem(`bible_${currentMember}`) || '{"chapters": 0, "books": {}}');
+            const selectedChapters = memberData.books[bookName] || [];
+
+            for (let i = 1; i <= chapters; i++) {
+                const btn = document.createElement('button');
+                btn.className = 'p-2 rounded-lg text-xs font-semibold transition checkbox-item';
+                btn.textContent = i;
+                btn.dataset.chapter = i;
+
+                if (selectedChapters.includes(i)) {
+                    btn.classList.add('bg-emerald-500', 'text-white');
+                } else {
+                    btn.classList.add('bg-slate-100', 'dark:bg-slate-700', 'text-slate-800', 'dark:text-white', 'hover:bg-emerald-500', 'dark:hover:bg-emerald-600');
+                }
+
+                btn.onclick = () => toggleChapter(btn, bookName, i, chapters);
+                grid.appendChild(btn);
+            }
+        }
+
+        function toggleChapter(element, bookName, chapterNum, totalChapters) {
+            element.classList.toggle('bg-emerald-500');
+            element.classList.toggle('text-white');
+            element.classList.toggle('bg-slate-100');
+            element.classList.toggle('dark:bg-slate-700');
+            element.classList.toggle('text-slate-800');
+            element.classList.toggle('dark:text-white');
+
+            // 데이터 저장
+            const memberData = JSON.parse(localStorage.getItem(`bible_${currentMember}`) || '{"chapters": 0, "books": {}, "readDates": []}');
+            if (!memberData.books) {
+                memberData.books = {};
+            }
+            if (!memberData.books[bookName]) {
+                memberData.books[bookName] = [];
+            }
+            if (!memberData.readDates) {
+                memberData.readDates = [];
+            }
+
+            const selectedChapters = memberData.books[bookName];
+            const today = new Date().toISOString().split('T')[0];
+            
+            if (element.classList.contains('bg-emerald-500')) {
+                if (!selectedChapters.includes(chapterNum)) {
+                    selectedChapters.push(chapterNum);
+                }
+                // Add today's date if not already there
+                if (!memberData.readDates.includes(today)) {
+                    memberData.readDates.push(today);
+                }
+            } else {
+                memberData.books[bookName] = selectedChapters.filter(ch => ch !== chapterNum);
+            }
+
+            // 전체 장 수 계산
+            let totalReadChapters = 0;
+            for (const book in memberData.books) {
+                totalReadChapters += memberData.books[book].length;
+            }
+            memberData.chapters = totalReadChapters;
+            memberData.last_read = `${bookName} ${chapterNum}장`;
+            
+            // 스트릭 업데이트
+            updateStreak(memberData, today);
+
+            localStorage.setItem(`bible_${currentMember}`, JSON.stringify(memberData));
+
+            // UI 업데이트 - 모든 대시보드
+            loadData();
+            showToast(`${bookName} ${chapterNum}장 ${element.classList.contains('bg-emerald-500') ? '선택됨' : '취소됨'}`, 'success');
+        }
+
+        function updateStreak(memberData, today) {
+            const lastReadDate = memberData.lastReadDate ? new Date(memberData.lastReadDate) : null;
+            const todayDate = new Date(today);
+            
+            if (!memberData.lastReadDate) {
+                memberData.streak = 1;
+                memberData.maxStreak = 1;
+            } else {
+                const dayDiff = Math.floor((todayDate - lastReadDate) / (1000 * 60 * 60 * 24));
+                
+                if (dayDiff === 0) {
+                    // Same day, no change to streak
+                } else if (dayDiff === 1) {
+                    // Consecutive day
+                    memberData.streak = (memberData.streak || 0) + 1;
+                    memberData.maxStreak = Math.max(memberData.maxStreak || 0, memberData.streak);
+                } else {
+                    // Broken streak
+                    memberData.streak = 1;
+                }
+            }
+            
+            memberData.lastReadDate = today;
+        }
+
+        function toggleAllChapters(select) {
+            const chapters = document.querySelectorAll('#chapters-grid button');
+            const memberData = JSON.parse(localStorage.getItem(`bible_${currentMember}`) || '{"chapters": 0, "books": {}, "readDates": []}');
+            if (!memberData.books) {
+                memberData.books = {};
+            }
+            if (!memberData.readDates) {
+                memberData.readDates = [];
+            }
+
+            const selectedChapters = [];
+            const today = new Date().toISOString().split('T')[0];
+            
+            chapters.forEach(btn => {
+                const chapterNum = parseInt(btn.dataset.chapter);
+                if (select) {
+                    btn.classList.add('bg-emerald-500', 'text-white');
+                    btn.classList.remove('bg-slate-100', 'dark:bg-slate-700', 'text-slate-800', 'dark:text-white');
+                    selectedChapters.push(chapterNum);
+                } else {
+                    btn.classList.remove('bg-emerald-500', 'text-white');
+                    btn.classList.add('bg-slate-100', 'dark:bg-slate-700', 'text-slate-800', 'dark:text-white');
+                }
+            });
+
+            memberData.books[selectedBook] = select ? selectedChapters : [];
+
+            // 전체 장 수 계산
+            let totalReadChapters = 0;
+            for (const book in memberData.books) {
+                totalReadChapters += memberData.books[book].length;
+            }
+            memberData.chapters = totalReadChapters;
+
+            // Add today's date if selecting
+            if (select && !memberData.readDates.includes(today)) {
+                memberData.readDates.push(today);
+                updateStreak(memberData, today);
+            }
+
+            localStorage.setItem(`bible_${currentMember}`, JSON.stringify(memberData));
+
+            // UI 업데이트 - 모든 대시보드
+            loadData();
+            showToast(`${select ? '모든 장을 선택했습니다' : '모든 장을 취소했습니다'}!`, 'success');
+        }
+
+        // ==========================================
+        // 9. 백업 및 초기화
+        // ==========================================
+        function backupData() {
+            const backup = {};
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                backup[key] = localStorage.getItem(key);
+            }
+
+            const dataStr = JSON.stringify(backup, null, 2);
+            const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr);
+
+            const exportFileDefaultName = `성경용사_백업_${new Date().toISOString().split('T')[0]}.json`;
+
+            const linkElement = document.createElement('a');
+            linkElement.setAttribute('href', dataUri);
+            linkElement.setAttribute('download', exportFileDefaultName);
+            linkElement.click();
+
+            showToast('백업 완료!', 'success');
+        }
+
+        function resetAllProgress() {
+            if (confirm('정말 모든 진도를 초기화하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) {
+                localStorage.clear();
+                location.reload();
+            }
+        }
+
+        // ==========================================
+        // 10. PWA 설치
+        // ==========================================
+        let deferredPrompt;
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            document.getElementById('install-prompt').classList.remove('hidden');
+        });
+
+        function installPWA() {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                deferredPrompt.userChoice.then((choiceResult) => {
+                    if (choiceResult.outcome === 'accepted') {
+                        showToast('앱이 설치되었습니다!', 'success');
+                    }
+                    deferredPrompt = null;
+                    document.getElementById('install-prompt').classList.add('hidden');
                 });
-
-                const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-                const link = document.createElement("a");
-                link.setAttribute("href", URL.createObjectURL(blob));
-                link.setAttribute("download", `성경용사_백업_${new Date().toISOString().split('T')[0]}.csv`);
-                link.click();
-
-                showToast("백업 완료!", "success");
-            } catch (err) {
-                console.error(err);
-                showToast("백업 실패", "error");
             }
         }
 
-        async function resetAllProgress() {
-            if (!confirm("정말로 모든 진도를 초기화하시겠습니까?")) return;
-            if (!confirm("되돌릴 수 없습니다. 정말 진행하시겠습니까?")) return;
-
-            try {
-                const { error } = await _supabase
-                    .from('reading_logs')
-                    .delete()
-                    .neq('member', SYSTEM_KEY);
-
-                if (error) throw error;
-
-                showToast("초기화 완료", "success");
-                await loadUserData();
-            } catch (err) {
-                console.error(err);
-                showToast("초기화 실패", "error");
-            }
+        function hideInstallPrompt() {
+            document.getElementById('install-prompt').classList.add('hidden');
         }
 
+        // ==========================================
+        // 11. 초기화
+        // ==========================================
+        window.addEventListener('DOMContentLoaded', () => {
+            updateUIForMember();
+            switchTab('today');
+            if (currentMember) {
+                switchTestament('OT');
+            }
+            
+            // Calendar navigation
+            document.getElementById('prevMonthBtn')?.addEventListener('click', () => {
+                currentCalendarMonth.setMonth(currentCalendarMonth.getMonth() - 1);
+                updateCalendar();
+            });
+            
+            document.getElementById('nextMonthBtn')?.addEventListener('click', () => {
+                currentCalendarMonth.setMonth(currentCalendarMonth.getMonth() + 1);
+                updateCalendar();
+            });
+        });
+
+        // 서비스 워커 등록
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('service-worker.js').catch(err => {
+                console.log('Service Worker 등록 실패:', err);
+            });
+        }
     </script>
-
 </body>
 </html>
